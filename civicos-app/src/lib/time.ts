@@ -29,3 +29,26 @@ export function greeting(now = new Date()): string {
 }
 
 export const cad = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
+
+const clockFormat = new Intl.DateTimeFormat("en-CA", { hour: "numeric", minute: "2-digit" });
+const dayClockFormat = new Intl.DateTimeFormat("en-CA", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/** "today 6:00 p.m.", "tomorrow 5:00 a.m." or "Mon, Sep 28, 5:00 a.m." in the viewer's time zone. */
+export function formatWhen(iso: string, now = new Date()): string {
+  const date = new Date(iso);
+  const dayOffset = Math.round(
+    (new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() -
+      new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /
+      86400000,
+  );
+  if (dayOffset === 0) return `today ${clockFormat.format(date)}`;
+  if (dayOffset === 1) return `tomorrow ${clockFormat.format(date)}`;
+  if (dayOffset === -1) return `yesterday ${clockFormat.format(date)}`;
+  return dayClockFormat.format(date);
+}

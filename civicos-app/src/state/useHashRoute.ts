@@ -1,8 +1,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-export type Route = "dashboard" | "housing" | "doctor" | "autism";
+export type ModuleRoute = "housing" | "doctor" | "autism";
+export type Route = "dashboard" | "services" | ModuleRoute;
 
-const ROUTES: Route[] = ["dashboard", "housing", "doctor", "autism"];
+const ROUTES: Route[] = ["dashboard", "services", "housing", "doctor", "autism"];
 
 const parse = (hash: string): Route => {
   const name = hash.replace(/^#\/?/, "").split("?")[0];
@@ -14,12 +15,15 @@ const subscribe = (onChange: () => void) => {
   return () => window.removeEventListener("hashchange", onChange);
 };
 
-/** Minimal hash router so module pages are linkable and the back button works. */
+/** Minimal hash router so pages are linkable and the back button works. */
 export function useHashRoute(): [Route, (route: Route) => void] {
   const route = useSyncExternalStore(subscribe, () => parse(window.location.hash), () => "dashboard" as Route);
   const navigate = useCallback((next: Route) => {
-    window.location.hash = next === "dashboard" ? "/" : `/${next}`;
-    window.scrollTo({ top: 0 });
+    const hash = next === "dashboard" ? "/" : `/${next}`;
+    if (window.location.hash.replace(/^#/, "") !== hash) {
+      window.location.hash = hash;
+      window.scrollTo({ top: 0 });
+    }
   }, []);
   return [route, navigate];
 }

@@ -18,9 +18,9 @@ const ServiceCard = ({ service, stepNumber, onStart, onListen }) => {
         </div>
       </div>
       <div className="card__body">
-        <h2 id={`card-${service.id}`} className="card__title">
+        <h3 id={`card-${service.id}`} className="card__title">
           {service.title}
-        </h2>
+        </h3>
         <p className="card__agency">{service.agency}</p>
         <p className="card__summary">{service.summary}</p>
         <ul className="card__subservices" aria-label="Includes">
@@ -33,19 +33,22 @@ const ServiceCard = ({ service, stepNumber, onStart, onListen }) => {
         <Clock size={14} aria-hidden="true" />
         {service.time}
       </div>
-      <div className="card__actions">
+      <div className="card__actions card__actions--stack">
         <button type="button" className="btn btn--primary" onClick={() => onStart(service)}>
           Start application
           <ArrowRight size={16} aria-hidden="true" />
         </button>
         <button
           type="button"
-          className="btn btn--secondary btn--icon"
+          className="btn btn--audio"
           onClick={() => onListen(service)}
-          aria-label={`Explain ${service.title} to me`}
-          title="Explain to citizen"
+          aria-label={`Audio summary of ${service.title}, voiced by ElevenLabs`}
         >
           <Volume2 size={17} aria-hidden="true" />
+          Audio summary
+          <span className="btn__hint" aria-hidden="true">
+            ElevenLabs
+          </span>
         </button>
       </div>
     </article>

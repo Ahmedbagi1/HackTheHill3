@@ -9,12 +9,13 @@ const SEVERITY_META: Record<Severity, { label: string; Icon: typeof Info }> = {
 };
 
 /** Severity is always shown with an icon and a word, never colour alone. */
-export function SeverityBadge({ severity }: { severity: Severity }) {
-  const { label, Icon } = SEVERITY_META[severity];
+export function SeverityBadge({ severity, label }: { severity: Severity; label?: string }) {
+  const meta = SEVERITY_META[severity];
+  const Icon = meta.Icon;
   return (
     <span className={`sev sev--${severity}`}>
       <Icon size={12} aria-hidden="true" />
-      {label}
+      {label ?? meta.label}
     </span>
   );
 }

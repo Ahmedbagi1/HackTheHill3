@@ -7,7 +7,28 @@
  *       outage summary. Returns the DisruptionFeed shape in src/types/dashboard.ts.
  *   GET /api/feeds/news?province=ON
  *       CBC national + provincial RSS headlines (NewsItem[]).
+ *   GET /api/feeds/alerts
+ *       Pan-Canadian alerts: ECCC weather, DriveBC, Hydro-Québec, BC Hydro and
+ *       Hydro Ottawa (RegionalAlertFeed in src/types/alerts.ts). The client
+ *       filters by region so switching jurisdictions needs no round trip.
  */
+
+import {
+  BC_HYDRO_OUTAGES_URL,
+  BC_HYDRO_PUBLIC_URL,
+  DRIVEBC_EVENTS_URL,
+  DRIVEBC_PUBLIC_URL,
+  ECCC_ALERTS_URL,
+  ECCC_PUBLIC_URL,
+  HYDRO_QUEBEC_MARKERS_URL,
+  HYDRO_QUEBEC_PUBLIC_URL,
+  HYDRO_QUEBEC_VERSION_URL,
+  mapBcHydro,
+  mapDriveBcEvents,
+  mapEcccAlerts,
+  mapHydroQuebec,
+  sortAlerts,
+} from "../src/lib/alertSources.ts";
 
 const OTTAWA_TRAFFIC_URL = "https://traffic.ottawa.ca/map/service/events?accept-language=en";
 const OC_TRANSPO_RSS_URL = "https://www.octranspo.com/en/feeds/updates-en/";
@@ -33,6 +54,8 @@ const PROVINCE_FEEDS = {
 const NATIONAL_FEEDS = ["canada", "politics"];
 
 const DISRUPTION_TTL_MS = 2 * 60 * 1000;
+const ALERTS_TTL_MS = 3 * 60 * 1000;
+const ALL_JURISDICTIONS = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"];
 const NEWS_TTL_MS = 10 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 8000;
 // Identifies CivicOS honestly; some CDNs stall user agents that embed URLs.
@@ -277,6 +300,58 @@ async function buildDisruptionFeed(origin) {
   };
 }
 
+async function loadHydroQuebec() {
+  const version = JSON.parse(await fetchText(HYDRO_QUEBEC_VERSION_URL));
+  if (!/^\d+$/.test(String(version))) throw new Error("Hydro-Québec: unexpected version");
+  return mapHydroQuebec(await fetchJson(HYDRO_QUEBEC_MARKERS_URL(version)));
+}
+
+/** Hydro Ottawa's summary, reshaped for the pan-Canadian panel. */
+async function loadHydroOttawaAlerts() {
+  const { items } = await cached("power", DISRUPTION_TTL_MS, loadPowerOutages);
+  return items.map((item) => ({
+    id: `ottawa-${item.id}`,
+    jurisdiction: "ON",
+    agency: "Hydro Ottawa",
+    agencyName: "Hydro Ottawa",
+    category: "power",
+    severity: item.severity,
+    title: item.title,
+    detail: item.detail,
+    area: "Ottawa",
+    updatedAt: item.updatedAt,
+    resolution: { kind: "ongoing", note: "Restoration times on the outage map" },
+    sourceUrl: item.sourceUrl,
+  }));
+}
+
+async function buildAlertFeed() {
+  const sources = [
+    { id: "eccc", label: "Environment Canada weather alerts", coverage: ALL_JURISDICTIONS, sourceUrl: ECCC_PUBLIC_URL, load: async () => mapEcccAlerts(await fetchJson(ECCC_ALERTS_URL)) },
+    { id: "drivebc", label: "DriveBC road events", coverage: ["BC"], sourceUrl: DRIVEBC_PUBLIC_URL, load: async () => mapDriveBcEvents(await fetchJson(DRIVEBC_EVENTS_URL)) },
+    { id: "bchydro", label: "BC Hydro outages", coverage: ["BC"], sourceUrl: BC_HYDRO_PUBLIC_URL, load: async () => mapBcHydro(await fetchJson(BC_HYDRO_OUTAGES_URL)) },
+    { id: "hydroquebec", label: "Hydro-Québec outages", coverage: ["QC"], sourceUrl: HYDRO_QUEBEC_PUBLIC_URL, load: loadHydroQuebec },
+    { id: "hydroottawa", label: "Hydro Ottawa outages", coverage: ["ON"], sourceUrl: "https://outages.hydroottawa.com/", load: loadHydroOttawaAlerts },
+  ];
+
+  const results = await Promise.allSettled(sources.map((source) => cached(`alerts:${source.id}`, ALERTS_TTL_MS, source.load)));
+  results.forEach((result, i) => {
+    if (result.status === "rejected") console.warn(`[civic-feeds] ${sources[i].id}: ${result.reason?.message ?? result.reason}`);
+  });
+
+  return {
+    items: sortAlerts(results.flatMap((result) => (result.status === "fulfilled" ? result.value : []))),
+    sources: sources.map(({ id, label, coverage, sourceUrl }, i) => ({
+      id,
+      label,
+      coverage,
+      sourceUrl,
+      status: results[i].status === "fulfilled" ? "live" : "unavailable",
+    })),
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
 async function loadNewsFeed(slug, scope) {
   const items = parseRss(await fetchText(CBC_RSS(slug)));
   return items.map((item) => ({
@@ -334,6 +409,9 @@ export function civicFeedsProxy() {
         const lon = Number(url.searchParams.get("lon"));
         const origin = Number.isFinite(lat) && Number.isFinite(lon) && lat && lon ? { lat, lon } : null;
         return sendJson(res, 200, await buildDisruptionFeed(origin));
+      }
+      if (url.pathname === "/api/feeds/alerts") {
+        return sendJson(res, 200, await buildAlertFeed());
       }
       if (url.pathname === "/api/feeds/news") {
         const province = (url.searchParams.get("province") ?? "ON").toUpperCase();

@@ -1,4 +1,4 @@
-import { LayoutGrid, Landmark } from "lucide-react";
+import { Landmark } from "lucide-react";
 import AccountButton from "../../components/account/AccountButton";
 import ProvinceSelector from "./ProvinceSelector";
 import NotificationsMenu from "./NotificationsMenu";
@@ -9,11 +9,10 @@ interface Props {
   readIds: string[];
   onMarkRead: (ids: string[]) => void;
   onSelectNotification: (notification: DashboardNotification) => void;
-  onOpenHub: () => void;
   onHome: () => void;
 }
 
-export default function DashboardHeader({ notifications, readIds, onMarkRead, onSelectNotification, onOpenHub, onHome }: Props) {
+export default function DashboardHeader({ notifications, readIds, onMarkRead, onSelectNotification, onHome }: Props) {
   return (
     <header className="topbar">
       <div className="topbar__inner">
@@ -34,11 +33,7 @@ export default function DashboardHeader({ notifications, readIds, onMarkRead, on
           </a>
           <ProvinceSelector />
         </div>
-        <nav className="topbar__actions" aria-label="Primary">
-          <button type="button" className="hub-trigger" onClick={onOpenHub} aria-haspopup="dialog">
-            <LayoutGrid size={16} aria-hidden="true" />
-            <span>All services</span>
-          </button>
+        <nav className="topbar__actions" aria-label="Account">
           <NotificationsMenu
             notifications={notifications}
             readIds={readIds}

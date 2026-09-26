@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import NotificationBanner from "./components/common/NotificationBanner";
 import { Skeleton } from "./components/ui/primitives";
 import { BANNER_NOTICE } from "./data/alerts";
@@ -7,21 +7,24 @@ import { PROVINCES_BY_CODE } from "./data/provinces";
 import DashboardHeader from "./features/dashboard/DashboardHeader";
 import CitizenDashboard from "./features/dashboard/CitizenDashboard";
 import { useDashboardSignals } from "./features/dashboard/useDashboardSignals";
+import ServiceDirectory from "./features/directory/ServiceDirectory";
+import ServiceNav from "./features/navigation/ServiceNav";
+import { buildDirectory, DEFAULT_FILTERS } from "./lib/directory";
 import { CivicDataProvider } from "./state/CivicDataContext";
 import { useCivicData } from "./state/civicDataStore";
 import { useDisruptions, useNews } from "./state/useCivicFeeds";
-import { useHashRoute, type Route } from "./state/useHashRoute";
+import { useHashRoute, type ModuleRoute } from "./state/useHashRoute";
+import { useRegionalAlerts } from "./state/useRegionalAlerts";
 import { useWasteSchedule } from "./state/wasteSchedule";
-import type { DashboardNotification, UserRequest } from "./types/dashboard";
+import type { DashboardNotification, ProvinceCode, UserRequest } from "./types/dashboard";
+import type { DirectoryFilters, IntentId, TierFilter } from "./types/directory";
 
 type CatalogService = (typeof SERVICES)[number];
-type ModuleRoute = Exclude<Route, "dashboard">;
 
 // Module pages and dialogs load on demand so the dashboard ships a smaller initial bundle.
 const HousingModule = lazy(() => import("./modules/housing/HousingModule"));
 const DoctorModule = lazy(() => import("./modules/doctor/DoctorModule"));
 const AutismModule = lazy(() => import("./modules/autism/AutismModule"));
-const ServiceHub = lazy(() => import("./features/dashboard/ServiceHub"));
 const RequestDetailsDialog = lazy(() => import("./features/dashboard/RequestDetailsDialog"));
 const BenefitsFinder = lazy(() => import("./components/finder/BenefitsFinder"));
 const DynamicModalWizard = lazy(() => import("./components/wizard/DynamicModalWizard"));
@@ -40,7 +43,7 @@ function AppShell() {
   const civic = useCivicData();
   const province = PROVINCES_BY_CODE[civic.location.province];
 
-  const [hubOpen, setHubOpen] = useState(false);
+  const [filters, setFilters] = useState<DirectoryFilters>(DEFAULT_FILTERS);
   const [finderOpen, setFinderOpen] = useState(false);
   const [wizard, setWizard] = useState<{
     service: CatalogService;
@@ -53,28 +56,38 @@ function AppShell() {
   const origin = waste.state.status === "ready" ? { lat: waste.state.lat, lon: waste.state.lon } : null;
   const disruptions = useDisruptions(province.fullCoverage, origin);
   const news = useNews(civic.location.province);
+  const alerts = useRegionalAlerts();
   const { notifications, emergency } = useDashboardSignals(civic.requests, waste.state, disruptions.data);
+
+  const directory = useMemo(() => buildDirectory(filters, civic.location.province), [filters, civic.location.province]);
+  // Dashboard chips act as shortcuts into the whole directory, whatever filters were last used.
+  const shortcutCounts = useMemo(
+    () => buildDirectory({ ...DEFAULT_FILTERS, province: filters.province }, civic.location.province).intentCounts,
+    [filters.province, civic.location.province],
+  );
+
+  const updateFilters = useCallback((patch: Partial<DirectoryFilters>) => setFilters((prev) => ({ ...prev, ...patch })), []);
+  const resetFilters = useCallback(() => setFilters((prev) => ({ ...DEFAULT_FILTERS, province: prev.province })), []);
+  const browse = useCallback(
+    (patch: Partial<DirectoryFilters> = {}) => {
+      updateFilters(patch);
+      navigate("services");
+    },
+    [navigate, updateFilters],
+  );
 
   const openWizard = useCallback((service: CatalogService, prefill: Record<string, unknown> | null = null) => {
     setVoiceService(null);
-    setHubOpen(false);
     setWizard({ service, prefill });
   }, []);
   const closeWizard = useCallback(() => setWizard(null), []);
   const openVoice = useCallback((service: CatalogService) => setVoiceService(service), []);
   const closeVoice = useCallback(() => setVoiceService(null), []);
-  const closeHub = useCallback(() => setHubOpen(false), []);
   const openFinder = useCallback(() => setFinderOpen(true), []);
   const closeFinder = useCallback(() => setFinderOpen(false), []);
   const closeRequestDetail = useCallback(() => setRequestDetail(null), []);
 
-  const openModule = useCallback(
-    (id: ModuleRoute) => {
-      setHubOpen(false);
-      navigate(id);
-    },
-    [navigate],
-  );
+  const openModule = useCallback((id: ModuleRoute) => navigate(id), [navigate]);
 
   const openRequest = useCallback(
     (request: UserRequest) => {
@@ -125,21 +138,44 @@ function AppShell() {
         readIds={civic.data.readNotifications}
         onMarkRead={civic.markNotificationsRead}
         onSelectNotification={handleNotification}
-        onOpenHub={() => setHubOpen(true)}
         onHome={goHome}
+      />
+
+      <ServiceNav
+        route={route}
+        tier={filters.tier}
+        counts={directory.tierCounts}
+        province={directory.province}
+        onHome={goHome}
+        onSelectTier={(tier: TierFilter) => browse({ tier })}
+        onSelectProvince={(code: ProvinceCode) => browse({ province: code, tier: "provincial" })}
       />
 
       {route === "dashboard" && (
         <CitizenDashboard
-          onStartService={openWizard}
-          onListen={openVoice}
+          onSearch={(query: string) => browse({ query, tier: "all", intent: "all" })}
+          onSelectIntent={(intent: IntentId) => browse({ intent, tier: "all", query: "" })}
+          intentCounts={shortcutCounts}
           onOpenModule={openModule}
           onOpenFinder={openFinder}
-          onOpenHub={() => setHubOpen(true)}
+          onBrowse={() => browse({ tier: "all" })}
           onOpenRequest={openRequest}
+          alerts={alerts}
           disruptions={disruptions}
           news={news}
           waste={waste}
+        />
+      )}
+      {route === "services" && (
+        <ServiceDirectory
+          filters={filters}
+          directory={directory}
+          locationProvince={civic.location.province}
+          onChange={updateFilters}
+          onReset={resetFilters}
+          onStartService={openWizard}
+          onListen={openVoice}
+          onOpenModule={openModule}
         />
       )}
 
@@ -150,8 +186,6 @@ function AppShell() {
       </Suspense>
 
       <Suspense fallback={null}>
-        {hubOpen && <ServiceHub onClose={closeHub} onStartService={openWizard} onListen={openVoice} onOpenModule={openModule} />}
-
         {finderOpen && (
           <BenefitsFinder
             onClose={closeFinder}

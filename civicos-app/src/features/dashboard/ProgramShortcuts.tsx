@@ -1,9 +1,9 @@
 import { ArrowUpRight, Baby, HeartPulse, House, PiggyBank } from "lucide-react";
-import type { Route } from "../../state/useHashRoute";
+import type { ModuleRoute } from "../../state/useHashRoute";
 
 interface Props {
   enabled: boolean;
-  onOpenModule: (route: Exclude<Route, "dashboard">) => void;
+  onOpenModule: (route: ModuleRoute) => void;
   onOpenFinder: () => void;
 }
 
