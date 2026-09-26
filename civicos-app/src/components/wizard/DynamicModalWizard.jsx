@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Printer,
   ShieldCheck,
+  Sparkles,
   Volume2,
   X,
 } from "lucide-react";
@@ -42,10 +43,18 @@ const printPacket = (packetInput) => {
  *   1. Primary details   2. Verification & requirements   3. Review & summary
  * Answers live in one `formData` object, so Back/Next never lose input.
  */
-const DynamicModalWizard = ({ service, onClose, onListen }) => {
+const DynamicModalWizard = ({ service, prefill, onClose, onListen }) => {
   const steps = useMemo(() => buildSteps(service.form), [service]);
   const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState(() => buildInitialFormData(service.form));
+  const [formData, setFormData] = useState(() => {
+    const initial = buildInitialFormData(service.form);
+    // Only accept prefilled keys this form actually has.
+    for (const [key, value] of Object.entries(prefill ?? {})) {
+      if (key in initial && value !== undefined && value !== "") initial[key] = value;
+    }
+    return initial;
+  });
+  const isPrefilled = Boolean(prefill && Object.keys(prefill).length);
   const [errors, setErrors] = useState({});
   const [submission, setSubmission] = useState(null);
   const bodyRef = useRef(null);
@@ -183,6 +192,12 @@ const DynamicModalWizard = ({ service, onClose, onListen }) => {
             <>
               <StepIndicator steps={steps} current={step} onSelect={goToStep} />
 
+              {isPrefilled && step === 0 && (
+                <p className="callout prefill-note">
+                  <Sparkles size={16} aria-hidden="true" />
+                  We've filled in answers from your benefits check. Review them before continuing.
+                </p>
+              )}
               <h3 className="form-section-title">
                 Step {step + 1}: {currentStep.title}
               </h3>

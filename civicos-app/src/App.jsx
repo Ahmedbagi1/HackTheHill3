@@ -1,9 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
+import { ArrowRight, PiggyBank } from "lucide-react";
 import Header from "./components/common/Header";
 import NotificationBanner from "./components/common/NotificationBanner";
 import SearchBar from "./components/common/SearchBar";
 import TierTabs from "./components/common/TierTabs";
 import CivicAlertsSidebar from "./components/dashboard/CivicAlertsSidebar";
+import BenefitsFinder from "./components/finder/BenefitsFinder";
 import LifeEventChecklist from "./components/dashboard/LifeEventChecklist";
 import ServicesGrid from "./components/dashboard/ServicesGrid";
 import ElevenLabsVoiceAssistant from "./components/voice/ElevenLabsVoiceAssistant";
@@ -29,8 +31,9 @@ const TIER_TOTALS = countByTier(SERVICES);
 function App() {
   const [query, setQuery] = useState("");
   const [activeTier, setActiveTier] = useState("All");
-  const [wizardService, setWizardService] = useState(null);
+  const [wizard, setWizard] = useState(null); // { service, prefill }
   const [voiceService, setVoiceService] = useState(null);
+  const [finderOpen, setFinderOpen] = useState(false);
 
   const { lifeEvent, results, stepByServiceId } = useMemo(
     () => searchCatalog(query, SERVICES, LIFE_EVENTS),
@@ -45,11 +48,17 @@ function App() {
     [results, activeTier],
   );
 
-  const openWizard = useCallback((service) => {
+  const openWizard = useCallback((service, prefill = null) => {
     setVoiceService(null);
-    setWizardService(service);
+    setWizard({ service, prefill });
   }, []);
-  const closeWizard = useCallback(() => setWizardService(null), []);
+  const closeWizard = useCallback(() => setWizard(null), []);
+  const openFinder = useCallback(() => setFinderOpen(true), []);
+  const closeFinder = useCallback(() => setFinderOpen(false), []);
+  const applyFromFinder = useCallback(
+    (serviceId, prefill) => openWizard(SERVICES_BY_ID[serviceId], prefill),
+    [openWizard],
+  );
   const openVoice = useCallback((service) => setVoiceService(service), []);
   const closeVoice = useCallback(() => setVoiceService(null), []);
 
@@ -62,8 +71,8 @@ function App() {
     <div className="app">
       <NotificationBanner
         notice={BANNER_NOTICE}
-        actionLabel="Estimate yours"
-        onAction={() => openWizard(SERVICES_BY_ID[BANNER_NOTICE.serviceId])}
+        actionLabel="Check what you qualify for"
+        onAction={openFinder}
       />
       <Header alertCount={ALERTS.length} />
 
@@ -76,6 +85,18 @@ function App() {
             across every level of government.
           </p>
           <SearchBar value={query} onChange={setQuery} />
+          <button type="button" className="finder-cta" onClick={openFinder}>
+            <span className="finder-cta__icon" aria-hidden="true">
+              <PiggyBank size={20} />
+            </span>
+            <span className="finder-cta__text">
+              <strong>Money you might be missing</strong>
+              <span>
+                Answer 5 questions to estimate your benefits across programs
+              </span>
+            </span>
+            <ArrowRight size={18} aria-hidden="true" />
+          </button>
         </section>
 
         {lifeEvent && (
@@ -121,10 +142,15 @@ function App() {
         </div>
       </div>
 
-      {wizardService && (
+      {finderOpen && (
+        <BenefitsFinder onClose={closeFinder} onApply={applyFromFinder} />
+      )}
+
+      {wizard && (
         <DynamicModalWizard
-          key={`wizard-${wizardService.id}`}
-          service={wizardService}
+          key={`wizard-${wizard.service.id}`}
+          service={wizard.service}
+          prefill={wizard.prefill}
           onClose={closeWizard}
           onListen={openVoice}
         />
@@ -136,7 +162,7 @@ function App() {
           service={voiceService}
           onClose={closeVoice}
           onStartApplication={(service) =>
-            wizardService?.id === service.id
+            wizard?.service.id === service.id
               ? closeVoice()
               : openWizard(service)
           }

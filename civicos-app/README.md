@@ -5,6 +5,7 @@ One dashboard for 29 Federal (Government of Canada), Provincial (Ontario) and Mu
 - **Cross-tier natural-language search**: "lost wallet" or "starting a business" builds a checklist spanning all three levels of government.
 - **Dynamic application wizard**: each service has its own 3-step questionnaire (details → verification → review), validation, and a downloadable review packet.
 - **Live Ottawa waste lookup**: geocodes an address with OpenStreetMap Nominatim, then queries the City of Ottawa's open-data collection-day layer.
+- **"Money you might be missing" finder**: 5 questions run every calculator at once and lead with one total (cash benefits and grants only). Each result opens its application prefilled.
 - **Benefit calculators**: CCB, GST/HST credit (Canada Groceries and Essentials Benefit), OSAP, Canadian Dental Care Plan, ODSP and Ontario Works asset screens, using 2026–27 parameters.
 - **ElevenLabs voice companion**: "Explain to citizen" plain-language audio briefings with a live waveform. Falls back to the browser voice when no API key is configured.
 
@@ -48,6 +49,7 @@ src/
     wizard/                  DynamicModalWizard, StepIndicator, FieldRenderer, ReviewSummary,
                              EstimateCard, WasteLookupField, GeotagField
     voice/                   ElevenLabsVoiceAssistant, Waveform, useSpeechPlayer
+    finder/                  BenefitsFinder, BenefitsBreakdownBar
   data/
     servicesData.js          Service catalog + per-service form schemas
     fieldBuilders.js         Field factories, patterns and validators (SIN Luhn, postal code, VIN…)
@@ -58,8 +60,8 @@ src/
     geocoding.js             Nominatim client (Ottawa-bounded, 1 req/s)
     benefitCalculators.js    CCB, CGEB, OSAP, CDCP, ODSP/OW, OAS engines
     elevenLabsClient.js      /api/tts client with per-service audio cache
-  lib/                       validation, formatting, search, screeners, reviewPacket
-  hooks/useDialogBehavior.js Escape/scroll-lock/focus handling for stacked dialogs
+  lib/                       validation, formatting, search, screeners, reviewPacket, benefitsFinder
+  hooks/                     useDialogBehavior (stacked dialogs), useCountUp (hero number)
   styles/                    Plain CSS split by concern; index.css is the entry point
 ```
 

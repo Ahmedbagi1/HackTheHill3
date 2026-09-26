@@ -6,6 +6,7 @@
  *
  *   {
  *     status:    "eligible" | "partial" | "ineligible" | "info",
+ *     annual?:   number            // cash benefits: yearly amount (CCB, CGEB)
  *     headline:  string            // e.g. "$4,120 / year"
  *     subline?:  string            // e.g. "≈ $343.33 per month"
  *     breakdown: [{ label, value }]
@@ -90,6 +91,7 @@ export function calculateCCB({ afni, childrenUnder6, children6to17 }) {
 
   return {
     status,
+    annual,
     headline: `${money.format(annual)} / year`,
     subline: annual > 0 ? `≈ ${moneyCents.format(annual / 12)} per month` : "No payment at this income",
     breakdown: [
@@ -162,6 +164,7 @@ export function calculateGstHstCredit({ hasSpouse, afni, children }) {
 
   return {
     status: annual === 0 ? "ineligible" : reduction > 0 ? "partial" : "eligible",
+    annual,
     headline: `${money.format(annual)} / year`,
     subline: annual > 0 ? `Paid quarterly: ≈ ${moneyCents.format(annual / 4)} each` : "No payment at this income",
     breakdown,
@@ -229,6 +232,9 @@ export function estimateOSAP({
 
   return {
     status: need === 0 ? "ineligible" : "eligible",
+    need,
+    grant,
+    loan,
     headline: `${money.format(need)} estimated aid`,
     subline: `${money.format(grant)} grant · ${money.format(loan)} repayable loan`,
     breakdown: [
