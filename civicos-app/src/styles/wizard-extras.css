@@ -1,0 +1,391 @@
+/* ==========================================================================
+   Wizard: additions for the dynamic field types
+   ========================================================================== */
+.modal {
+  max-width: 640px;
+}
+
+.modal__header-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.modal__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.field__textarea {
+  height: auto;
+  min-height: 96px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.field__counter {
+  align-self: flex-end;
+  margin-top: -2px;
+  font-size: 11px;
+  color: var(--slate-400);
+}
+
+.callout {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--provincial-soft);
+  color: var(--provincial);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.callout svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* ==========================================================================
+   Estimate card
+   ========================================================================== */
+.estimate {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--slate-50);
+}
+
+.estimate--pending {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--slate-500);
+  border-style: dashed;
+}
+
+.estimate--eligible {
+  border-color: #a7f3d0;
+  background: var(--success-soft);
+}
+
+.estimate--partial,
+.estimate--info {
+  border-color: #c7d2fe;
+  background: var(--primary-soft);
+}
+
+.estimate--ineligible {
+  border-color: #fecdd3;
+  background: var(--danger-soft);
+}
+
+.estimate__label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--slate-500);
+}
+
+.estimate__placeholder {
+  font-size: 13.5px;
+}
+
+.estimate__headline {
+  margin-top: 2px;
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--slate-900);
+}
+
+.estimate--eligible .estimate__headline {
+  color: var(--success-hover);
+}
+
+.estimate--ineligible .estimate__headline {
+  color: var(--federal);
+}
+
+.estimate__subline {
+  font-size: 13.5px;
+  color: var(--slate-600);
+}
+
+.estimate__breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 13px;
+}
+
+.estimate__breakdown div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.estimate__breakdown dt {
+  color: var(--slate-600);
+}
+
+.estimate__breakdown dd {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.estimate__notes {
+  margin-top: 10px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: 12.5px;
+  color: var(--slate-600);
+}
+
+.estimate__source {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--slate-500);
+}
+
+.estimate__source a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Ottawa waste lookup
+   ========================================================================== */
+.waste-lookup__row {
+  display: flex;
+  gap: 8px;
+}
+
+.waste-lookup__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.waste-lookup__input .input-group__affix {
+  color: var(--slate-400);
+}
+
+.waste-lookup__error {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--danger);
+}
+
+.waste-result {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #a7f3d0;
+  border-radius: var(--radius);
+  background: var(--success-soft);
+  animation: fade-in 0.2s ease-out;
+}
+
+.waste-result__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--success-hover);
+}
+
+.waste-result__day {
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.waste-result__next {
+  font-size: 13px;
+  color: var(--slate-700);
+}
+
+.waste-result__address {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--slate-600);
+}
+
+.waste-result__meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.waste-result__meta div {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.waste-result__meta dt {
+  font-size: 11px;
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.waste-result__meta dd {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.waste-result__rotation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.waste-result__rotation li {
+  display: flex;
+  flex-direction: column;
+}
+
+.waste-result__rotation span {
+  color: var(--slate-600);
+}
+
+.waste-result__footnote,
+.waste-result__attribution {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--slate-600);
+}
+
+.waste-result__footnote a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.waste-result__attribution {
+  margin-top: 4px;
+  color: var(--slate-400);
+}
+
+/* Sidebar variant: stack button under the input */
+.sidebar .waste-lookup__row {
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   Geotag
+   ========================================================================== */
+.geotag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.geotag__result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--slate-50);
+  color: var(--primary);
+}
+
+.geotag__result > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.geotag__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--slate-800);
+}
+
+.geotag__coords {
+  font-size: 12px;
+  color: var(--slate-500);
+}
+
+.geotag__coords a {
+  color: var(--primary);
+}
+
+/* ==========================================================================
+   Review + success additions
+   ========================================================================== */
+.review-group__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.requirements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 12px 32px;
+  list-style: disc;
+  font-size: 13.5px;
+  color: var(--slate-700);
+}
+
+.review-download {
+  margin-top: 12px;
+}
+
+.success__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.success__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--primary);
+}
+
+@media (max-width: 480px) {
+  .waste-lookup__row {
+    flex-direction: column;
+  }
+
+  .waste-result__meta {
+    grid-template-columns: 1fr 1fr;
+  }
+}

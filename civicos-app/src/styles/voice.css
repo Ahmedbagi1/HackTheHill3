@@ -1,0 +1,233 @@
+/* ==========================================================================
+   Voice companion drawer
+   ========================================================================== */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(3px);
+  animation: fade-in 0.15s ease-out;
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: slide-in 0.22s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.drawer__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 12px;
+}
+
+.drawer__title {
+  margin-top: 2px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.drawer__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.voice-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.voice-mode--live {
+  background: #111827;
+  color: #fff;
+}
+
+.voice-mode--sim {
+  background: var(--slate-100);
+  color: var(--slate-600);
+}
+
+/* Player ------------------------------------------------------------- */
+.player {
+  --wave-color: #818cf8;
+  margin: 0 22px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, #1e1b4b, #312e81);
+  color: #fff;
+}
+
+.waveform {
+  display: block;
+  width: 100%;
+  height: 72px;
+}
+
+.player__progress {
+  height: 4px;
+  margin-top: 12px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.player__progress span {
+  display: block;
+  height: 100%;
+  background: #a5b4fc;
+  transition: width 0.2s linear;
+}
+
+.player__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.player__play {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: #fff;
+  color: #312e81;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+
+.player__play:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.player__play:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.player__status {
+  flex: 1;
+  font-size: 13.5px;
+  color: #c7d2fe;
+}
+
+.player .icon-btn {
+  color: #c7d2fe;
+}
+
+.player .icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.player .icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.player__error {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: #fde68a;
+}
+
+/* Transcript --------------------------------------------------------- */
+.drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+
+.transcript + .transcript {
+  margin-top: 18px;
+}
+
+.transcript__heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--slate-500);
+}
+
+.transcript p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--slate-800);
+}
+
+.transcript .requirements-list {
+  padding: 0 0 0 20px;
+}
+
+.transcript__time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.drawer__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--slate-100);
+  background: var(--slate-50);
+}
+
+.drawer__footer a.btn {
+  text-decoration: none;
+}
+
+@media (max-width: 480px) {
+  .drawer-backdrop {
+    align-items: flex-end;
+  }
+
+  .drawer {
+    max-width: none;
+    height: 92vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation-name: scale-in;
+  }
+}

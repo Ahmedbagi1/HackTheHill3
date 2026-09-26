@@ -1,0 +1,379 @@
+/* ==========================================================================
+   Toolbar: search + tabs
+   ========================================================================== */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.search:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-ring);
+}
+
+.search__icon {
+  position: absolute;
+  left: 12px;
+  color: var(--slate-400);
+  pointer-events: none;
+}
+
+.search__input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 40px 0 40px;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 15px;
+}
+
+.search__input::placeholder {
+  color: var(--slate-400);
+}
+
+.search__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search__clear {
+  position: absolute;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  color: var(--slate-400);
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.search__clear:hover {
+  background: var(--slate-100);
+  color: var(--slate-700);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--slate-100);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex: 1 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--slate-600);
+  white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+}
+
+.tab:hover {
+  color: var(--slate-900);
+}
+
+.tab--active {
+  background: var(--surface);
+  color: var(--slate-900);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab__count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--slate-200);
+  color: var(--slate-600);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
+
+.tab--active .tab__count {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.results-meta {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.results-meta strong {
+  color: var(--slate-700);
+}
+
+/* ==========================================================================
+   Service cards
+   ========================================================================== */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--slate-300);
+}
+
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card__icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.card__icon--municipal {
+  background: var(--municipal-soft);
+  color: var(--municipal);
+}
+
+.card__icon--provincial {
+  background: var(--provincial-soft);
+  color: var(--provincial);
+}
+
+.card__icon--federal {
+  background: var(--federal-soft);
+  color: var(--federal);
+}
+
+.card__body {
+  flex: 1;
+}
+
+.card__title {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.card__summary {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--slate-600);
+}
+
+.card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Badges
+   ========================================================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge--municipal {
+  background: var(--municipal-soft);
+  color: var(--municipal);
+}
+
+.badge--provincial {
+  background: var(--provincial-soft);
+  color: var(--provincial);
+}
+
+.badge--federal {
+  background: var(--federal-soft);
+  color: var(--federal);
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn--primary {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btn--success {
+  background: var(--success);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--success:hover:not(:disabled) {
+  background: var(--success-hover);
+}
+
+.btn--secondary {
+  background: var(--surface);
+  color: var(--slate-700);
+  border: 1px solid var(--slate-300);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: var(--slate-50);
+  border-color: var(--slate-400);
+}
+
+.btn--ghost {
+  color: var(--slate-600);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--slate-100);
+  color: var(--slate-900);
+}
+
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Empty state
+   ========================================================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--slate-300);
+  border-radius: var(--radius-lg);
+}
+
+.empty-state__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-full);
+  background: var(--slate-100);
+  color: var(--slate-400);
+}
+
+.empty-state__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.empty-state__text {
+  max-width: 360px;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}

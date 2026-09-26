@@ -1,0 +1,10 @@
+/* CivicOS stylesheet entry point. Plain CSS, no build-time framework. */
+@import "./tokens.css";
+@import "./base.css";
+@import "./layout.css";
+@import "./components.css";
+@import "./dashboard.css";
+@import "./wizard.css";
+@import "./wizard-extras.css";
+@import "./voice.css";
+@import "./responsive.css";

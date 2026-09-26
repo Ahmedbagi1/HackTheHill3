@@ -1,0 +1,535 @@
+/* ==========================================================================
+   Modal
+   ========================================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gutter);
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  animation: fade-in 0.15s ease-out;
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 32px);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: scale-in 0.18s ease-out;
+}
+
+.modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 0;
+}
+
+.modal__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.modal__title {
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.modal__body {
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--slate-100);
+  background: var(--slate-50);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.modal__footer-end {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   Stepper
+   ========================================================================== */
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+/* Connector line to the previous step */
+.step + .step::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--slate-200);
+  z-index: 0;
+  transition: background-color 0.2s;
+}
+
+.step--done + .step::before,
+.step--done + .step--active::before {
+  background: var(--primary);
+}
+
+.step__button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--slate-300);
+  background: var(--surface);
+  color: var(--slate-500);
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
+}
+
+.step__button:disabled {
+  cursor: default;
+}
+
+.step--active .step__button {
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-ring);
+}
+
+.step--done .step__button {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.step--done .step__button:hover {
+  background: var(--primary-hover);
+}
+
+.step__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate-500);
+}
+
+.step--active .step__label,
+.step--done .step__label {
+  color: var(--slate-800);
+}
+
+/* ==========================================================================
+   Form fields
+   ========================================================================== */
+.form-section-title {
+  font-size: 14px;
+  font-weight: 650;
+  margin-bottom: 4px;
+}
+
+.form-section-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--slate-700);
+}
+
+.field__optional {
+  font-weight: 400;
+  color: var(--slate-400);
+}
+
+.field__input {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 14px;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.field__input::placeholder {
+  color: var(--slate-400);
+}
+
+.field__input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.field--error .field__input {
+  border-color: var(--danger);
+}
+
+.field--error .field__input:focus {
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.2);
+}
+
+.field__error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--danger);
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--slate-50);
+  font-size: 13.5px;
+  color: var(--slate-700);
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.checkbox + .field__error {
+  margin-top: 8px;
+}
+
+.checkbox--error {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* Declarations rendered inside a step's field grid */
+.fields .checkbox {
+  margin-top: 0;
+}
+
+.field__hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Select */
+.field__select {
+  width: 100%;
+  padding-right: 36px;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.field__select:invalid {
+  color: var(--slate-400);
+}
+
+.field__select option {
+  color: var(--text);
+}
+
+/* Inputs with a prefix ($) or suffix (km, kWh) */
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-group .field__input {
+  width: 100%;
+}
+
+.input-group__affix {
+  position: absolute;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--slate-500);
+  pointer-events: none;
+}
+
+.input-group__affix--prefix {
+  left: 12px;
+}
+
+.input-group__affix--suffix {
+  right: 12px;
+}
+
+.field__input--has-prefix {
+  padding-left: 28px;
+}
+
+.field__input--has-suffix {
+  padding-right: 52px;
+}
+
+/* Hide number spinners; values are typed */
+.field__input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.field__input[type="number"]::-webkit-inner-spin-button,
+.field__input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Radio / checkbox choice cards */
+.choice-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.choice:hover {
+  border-color: var(--slate-400);
+}
+
+.choice:focus-within {
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.choice--selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.choice--selected:hover {
+  border-color: var(--primary);
+}
+
+.choice__input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+}
+
+.choice__input:focus-visible {
+  outline: none;
+}
+
+.choice__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.choice__label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--slate-800);
+}
+
+.choice__hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.field--error .choice {
+  border-color: var(--danger);
+}
+
+.field--error .choice--selected {
+  border-color: var(--primary);
+}
+
+/* ==========================================================================
+   Review
+   ========================================================================== */
+.review-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.review-group + .review-group {
+  margin-top: 12px;
+}
+
+.review-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--slate-50);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.review-list {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) minmax(0, 1fr);
+  gap: 8px 16px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+}
+
+.review-list > div {
+  display: contents;
+}
+
+.review-list dt {
+  color: var(--text-muted);
+}
+
+.review-list dd {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   Success
+   ========================================================================== */
+.success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  text-align: center;
+}
+
+.success__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-full);
+  background: var(--success-soft);
+  color: var(--success);
+  animation: scale-in 0.25s ease-out;
+}
+
+.success__title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.success__text {
+  max-width: 380px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.success__ref {
+  margin-top: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--slate-100);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
