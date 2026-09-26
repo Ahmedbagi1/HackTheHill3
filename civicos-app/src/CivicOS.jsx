@@ -114,88 +114,452 @@ const LEVEL_TOTALS = LEVELS.reduce((acc, level) => {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[\d\s()+-]{7,}$/;
-const POSTAL_RE = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
 
-const STEPS = [
+/* -------------------------------------------------------------------------- */
+/* Application schemas                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Field schema:
+ *   name          key in formData
+ *   label         visible label (or declaration text for type "checkbox")
+ *   type          text | email | tel | number | date | select | radio |
+ *                 checkbox-group | checkbox
+ *   optional      skip the required check when empty
+ *   options       [{ value, label, hint? }] for select / radio / checkbox-group
+ *   pattern       { regex, message } checked against the trimmed value
+ *   min, max, step            number constraints
+ *   prefix, suffix            input adornments, also used when formatting answers
+ *   notAfterToday             date may not be in the future
+ *   transform     "uppercase" to normalise identifiers while typing
+ *   suggestions   string[] rendered as a <datalist> for lookup-style inputs
+ *   showIf        (formData) => boolean; hidden fields are not validated or reviewed
+ *   full          span both grid columns
+ *   hint, placeholder, autoComplete, inputMode, maxLength, requiredMessage
+ */
+const APPLICATION_SCHEMAS = {
+  "vehicle-registration": {
+    confirmation:
+      "Bring your insurance slip when you collect your plates and permit.",
+    primary: {
+      description: "Tell us about the vehicle you are registering.",
+      fields: [
+        {
+          name: "vin",
+          label: "VIN number",
+          type: "text",
+          placeholder: "1HGCM82633A004352",
+          maxLength: 17,
+          transform: "uppercase",
+          autoComplete: "off",
+          pattern: {
+            regex: /^[A-HJ-NPR-Z0-9]{17}$/,
+            message: "VIN must be 17 letters or digits (no I, O or Q).",
+          },
+          hint: "Found on the driver's side dashboard or door frame.",
+          full: true,
+        },
+        {
+          name: "make",
+          label: "Vehicle make",
+          type: "text",
+          placeholder: "Toyota",
+        },
+        {
+          name: "model",
+          label: "Vehicle model",
+          type: "text",
+          placeholder: "Corolla",
+        },
+        {
+          name: "purchasePrice",
+          label: "Purchase price",
+          type: "number",
+          prefix: "$",
+          min: 0,
+          step: 0.01,
+          inputMode: "decimal",
+          placeholder: "24,500.00",
+          full: true,
+        },
+      ],
+    },
+    verification: {
+      description: "We need proof of insurance and the current odometer value.",
+      fields: [
+        {
+          name: "insurancePolicy",
+          label: "Insurance policy number",
+          type: "text",
+          placeholder: "POL-12345678",
+          transform: "uppercase",
+          autoComplete: "off",
+          pattern: {
+            regex: /^[A-Z0-9-]{6,20}$/,
+            message: "Use 6–20 letters, digits or dashes.",
+          },
+        },
+        {
+          name: "odometer",
+          label: "Odometer reading",
+          type: "number",
+          suffix: "km",
+          min: 0,
+          step: 1,
+          inputMode: "numeric",
+          placeholder: "42000",
+        },
+      ],
+    },
+  },
+
+  "lost-wallet": {
+    confirmation:
+      "If you requested a police report, an officer will contact you within 2 business days.",
+    primary: {
+      description: "Tell us when and where the wallet went missing.",
+      fields: [
+        {
+          name: "incidentDate",
+          label: "Incident date",
+          type: "date",
+          notAfterToday: true,
+        },
+        {
+          name: "locationLost",
+          label: "Location lost",
+          type: "text",
+          placeholder: "e.g. Rideau Centre, 50 Rideau St",
+          hint: "A street address, landmark or transit route.",
+          full: true,
+        },
+      ],
+    },
+    verification: {
+      description:
+        "Select the cards that need replacing and whether you need a police report.",
+      fields: [
+        {
+          name: "cardsLost",
+          label: "Cards lost",
+          type: "checkbox-group",
+          optional: true,
+          options: [
+            { value: "drivers-license", label: "Driver's License" },
+            { value: "health-card", label: "Health Card" },
+          ],
+          hint: "We'll start a replacement request for each card you select.",
+          full: true,
+        },
+        {
+          name: "policeReport",
+          label: "Do you need a police report?",
+          type: "radio",
+          options: [
+            {
+              value: "yes",
+              label: "Yes, file a report",
+              hint: "Recommended if you suspect theft.",
+            },
+            {
+              value: "no",
+              label: "No, not needed",
+              hint: "The wallet was misplaced.",
+            },
+          ],
+          full: true,
+        },
+      ],
+    },
+  },
+
+  passport: {
+    confirmation: "Keep your current passport until we ask you to send it in.",
+    primary: {
+      description: "Enter the details from your most recent passport.",
+      fields: [
+        {
+          name: "passportNumber",
+          label: "Current passport number",
+          type: "text",
+          placeholder: "AB123456",
+          maxLength: 8,
+          transform: "uppercase",
+          autoComplete: "off",
+          pattern: {
+            regex: /^[A-Z]{2}\d{6}$/,
+            message: "Use 2 letters followed by 6 digits, e.g. AB123456.",
+          },
+        },
+        {
+          name: "passportExpiry",
+          label: "Expiry date",
+          type: "date",
+        },
+      ],
+    },
+    verification: {
+      description:
+        "Your guarantor must have known you for at least 2 years. Choose how quickly you need the passport.",
+      fields: [
+        {
+          name: "guarantorName",
+          label: "Guarantor name",
+          type: "text",
+          placeholder: "Full legal name of your guarantor",
+          autoComplete: "off",
+          full: true,
+        },
+        {
+          name: "pickupOption",
+          label: "Urgent pickup selection",
+          type: "select",
+          options: [
+            { value: "standard", label: "Standard mail (20 business days)" },
+            { value: "express", label: "Express pickup (2–9 business days)" },
+            { value: "urgent", label: "Urgent pickup (next business day)" },
+          ],
+          hint: "Express and urgent pickup carry additional fees.",
+          full: true,
+        },
+      ],
+    },
+  },
+
+  "drivers-license": {
+    confirmation:
+      "Your new card will arrive by mail. Carry the temporary licence until then.",
+    primary: {
+      description:
+        "Enter the licence you are renewing and your organ donor preference.",
+      fields: [
+        {
+          name: "licenseNumber",
+          label: "Existing license number",
+          type: "text",
+          placeholder: "A1234-12345-12345",
+          maxLength: 17,
+          transform: "uppercase",
+          autoComplete: "off",
+          pattern: {
+            regex: /^[A-Z]\d{4}-?\d{5}-?\d{5}$/,
+            message: "Use the format A1234-12345-12345.",
+          },
+          full: true,
+        },
+        {
+          name: "organDonor",
+          label: "Organ donor preference",
+          type: "radio",
+          options: [
+            {
+              value: "yes",
+              label: "Register me",
+              hint: "Add me to the donor registry.",
+            },
+            { value: "no", label: "Do not register" },
+            { value: "undecided", label: "Decide later" },
+          ],
+          full: true,
+        },
+      ],
+    },
+    verification: {
+      description: "Drivers must meet minimum vision standards to renew.",
+      fields: [
+        {
+          name: "correctiveLenses",
+          label: "Do you wear corrective lenses while driving?",
+          type: "radio",
+          options: [
+            { value: "yes", label: "Yes" },
+            { value: "no", label: "No" },
+          ],
+          full: true,
+        },
+        {
+          name: "visionDeclaration",
+          label:
+            "I declare that my vision meets the minimum standard for driving, with corrective lenses if I need them.",
+          reviewLabel: "Vision declaration",
+          type: "checkbox",
+          requiredMessage: "You must accept the vision declaration to renew.",
+          full: true,
+        },
+      ],
+    },
+  },
+
+  "trash-pickup": {
+    confirmation:
+      "Your collection calendar is ready. Reminders start before your next pickup.",
+    primary: {
+      description: "Look up your address to find your collection schedule.",
+      fields: [
+        {
+          name: "address",
+          label: "Address lookup",
+          type: "text",
+          placeholder: "Start typing your street address",
+          autoComplete: "street-address",
+          suggestions: [
+            "1 Elgin St",
+            "50 Rideau St",
+            "110 Laurier Ave W",
+            "300 Sparks St",
+            "455 Bank St",
+          ],
+          full: true,
+        },
+        {
+          name: "propertyType",
+          label: "Property type",
+          type: "radio",
+          options: [
+            { value: "single", label: "Single home", hint: "Curbside pickup." },
+            {
+              value: "multi-unit",
+              label: "Multi-unit",
+              hint: "Shared bins or depot.",
+            },
+          ],
+          full: true,
+        },
+        {
+          name: "unitCount",
+          label: "Number of units",
+          type: "number",
+          min: 2,
+          max: 500,
+          step: 1,
+          inputMode: "numeric",
+          placeholder: "12",
+          showIf: (data) => data.propertyType === "multi-unit",
+        },
+      ],
+    },
+    verification: {
+      description: "Choose how you'd like to be reminded before pickup day.",
+      fields: [
+        {
+          name: "alertMethod",
+          label: "Notification alert preference",
+          type: "select",
+          options: [
+            { value: "email", label: "Email" },
+            { value: "sms", label: "Text message (SMS)" },
+            { value: "app", label: "CivicOS app notification" },
+            { value: "none", label: "No reminders" },
+          ],
+          full: true,
+        },
+        {
+          name: "alertEmail",
+          label: "Email for reminders",
+          type: "email",
+          autoComplete: "email",
+          placeholder: "jane@example.com",
+          pattern: { regex: EMAIL_RE, message: "Enter a valid email address." },
+          showIf: (data) => data.alertMethod === "email",
+          full: true,
+        },
+        {
+          name: "alertPhone",
+          label: "Mobile number for reminders",
+          type: "tel",
+          autoComplete: "tel",
+          placeholder: "(613) 555-0123",
+          pattern: { regex: PHONE_RE, message: "Enter a valid phone number." },
+          showIf: (data) => data.alertMethod === "sms",
+          full: true,
+        },
+      ],
+    },
+  },
+
+  "utility-bill": {
+    confirmation:
+      "A receipt will be available in your account within 24 hours.",
+    primary: {
+      description: "Find the account and meter details on your latest bill.",
+      fields: [
+        {
+          name: "accountNumber",
+          label: "Account number",
+          type: "text",
+          inputMode: "numeric",
+          placeholder: "0012345678",
+          maxLength: 12,
+          autoComplete: "off",
+          pattern: {
+            regex: /^\d{6,12}$/,
+            message: "Account numbers are 6–12 digits.",
+          },
+        },
+        {
+          name: "meterReading",
+          label: "Meter reading",
+          type: "number",
+          suffix: "kWh",
+          min: 0,
+          step: 1,
+          inputMode: "numeric",
+          placeholder: "18250",
+        },
+      ],
+    },
+    verification: {
+      description: "Confirm how much you're paying and how.",
+      fields: [
+        {
+          name: "paymentAmount",
+          label: "Payment amount",
+          type: "number",
+          prefix: "$",
+          min: 0.01,
+          step: 0.01,
+          inputMode: "decimal",
+          placeholder: "128.40",
+        },
+        {
+          name: "paymentMethod",
+          label: "Payment method",
+          type: "select",
+          options: [
+            { value: "debit", label: "Pre-authorized debit" },
+            { value: "credit", label: "Credit card" },
+            { value: "banking", label: "Online banking" },
+          ],
+        },
+      ],
+    },
+  },
+};
+
+/** Step 1 and 2 come from the service schema; step 3 is always the review. */
+const buildSteps = (schema) => [
   {
-    id: "identity",
-    label: "Identity",
-    title: "Identity & eligibility",
-    description: "Tell us who is applying so we can verify eligibility.",
-    fields: [
-      {
-        name: "fullName",
-        label: "Full name",
-        type: "text",
-        autoComplete: "name",
-        placeholder: "Jane Doe",
-        full: true,
-      },
-      {
-        name: "email",
-        label: "Email address",
-        type: "email",
-        autoComplete: "email",
-        placeholder: "jane@example.com",
-      },
-      {
-        name: "phone",
-        label: "Phone number",
-        type: "tel",
-        autoComplete: "tel",
-        placeholder: "(613) 555-0123",
-        optional: true,
-      },
-    ],
+    id: "primary",
+    label: "Details",
+    title: "Primary details",
+    ...schema.primary,
   },
   {
-    id: "address",
-    label: "Address",
-    title: "Residential address",
-    description: "Where should correspondence about this application go?",
-    fields: [
-      {
-        name: "address",
-        label: "Street address",
-        type: "text",
-        autoComplete: "street-address",
-        placeholder: "123 Wellington St",
-        full: true,
-      },
-      {
-        name: "city",
-        label: "City",
-        type: "text",
-        autoComplete: "address-level2",
-        placeholder: "Ottawa",
-      },
-      {
-        name: "postalCode",
-        label: "Postal code",
-        type: "text",
-        autoComplete: "postal-code",
-        placeholder: "K1A 0A6",
-      },
-    ],
+    id: "verification",
+    label: "Verification",
+    title: "Verification & requirements",
+    ...schema.verification,
   },
   {
     id: "review",
     label: "Review",
-    title: "Review & submit",
-    description: "Confirm your details before submitting the application.",
+    title: "Review & summary",
+    description: "Check your answers before you submit the application.",
     fields: [],
   },
 ];
 
-const EMPTY_FORM = {
-  fullName: "",
-  email: "",
-  phone: "",
-  address: "",
-  city: "",
-  postalCode: "",
-  consent: false,
-};
+const CHOICE_TYPES = new Set(["select", "radio"]);
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -210,31 +574,126 @@ const matchesQuery = (service, query) => {
     .some((text) => text.includes(query));
 };
 
-const validateStep = (stepIndex, form) => {
+const todayISO = () => {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  return now.toISOString().slice(0, 10);
+};
+
+const emptyValueFor = (field) => {
+  if (field.type === "checkbox-group") return [];
+  if (field.type === "checkbox") return false;
+  return "";
+};
+
+const buildInitialFormData = (schema) => {
+  const data = { consent: false };
+  for (const field of [
+    ...schema.primary.fields,
+    ...schema.verification.fields,
+  ]) {
+    data[field.name] = emptyValueFor(field);
+  }
+  return data;
+};
+
+const isVisible = (field, formData) => !field.showIf || field.showIf(formData);
+
+const visibleFields = (fields, formData) =>
+  fields.filter((field) => isVisible(field, formData));
+
+const isEmptyValue = (field, value) => {
+  if (field.type === "checkbox-group") return value.length === 0;
+  if (field.type === "checkbox") return !value;
+  return String(value).trim() === "";
+};
+
+const withUnits = (field, amount) =>
+  `${field.prefix ?? ""}${amount}${field.suffix ? ` ${field.suffix}` : ""}`;
+
+const validateField = (field, value) => {
+  if (isEmptyValue(field, value)) {
+    if (field.optional) return null;
+    if (field.requiredMessage) return field.requiredMessage;
+    return CHOICE_TYPES.has(field.type)
+      ? "Please choose an option."
+      : `${field.label} is required.`;
+  }
+
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+
+  if (field.pattern && !field.pattern.regex.test(text)) {
+    return field.pattern.message;
+  }
+
+  if (field.type === "number") {
+    const amount = Number(text);
+    if (!Number.isFinite(amount)) return "Enter a valid number.";
+    if (field.min !== undefined && amount < field.min)
+      return `Must be at least ${withUnits(field, field.min)}.`;
+    if (field.max !== undefined && amount > field.max)
+      return `Must be ${withUnits(field, field.max)} or less.`;
+    if (field.step === 1 && !Number.isInteger(amount))
+      return "Enter a whole number.";
+  }
+
+  if (field.type === "date") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return "Enter a valid date.";
+    if (field.notAfterToday && text > todayISO())
+      return "Date can't be in the future.";
+  }
+
+  return null;
+};
+
+const validateFields = (fields, formData) => {
   const errors = {};
-
-  if (stepIndex === 0) {
-    if (!form.fullName.trim()) errors.fullName = "Full name is required.";
-    if (!form.email.trim()) errors.email = "Email address is required.";
-    else if (!EMAIL_RE.test(form.email.trim()))
-      errors.email = "Enter a valid email address.";
-    if (form.phone.trim() && !PHONE_RE.test(form.phone.trim()))
-      errors.phone = "Enter a valid phone number.";
+  for (const field of visibleFields(fields, formData)) {
+    const error = validateField(field, formData[field.name]);
+    if (error) errors[field.name] = error;
   }
-
-  if (stepIndex === 1) {
-    if (!form.address.trim()) errors.address = "Street address is required.";
-    if (!form.city.trim()) errors.city = "City is required.";
-    if (!form.postalCode.trim()) errors.postalCode = "Postal code is required.";
-    else if (!POSTAL_RE.test(form.postalCode.trim()))
-      errors.postalCode = "Use the format A1A 1A1.";
-  }
-
-  if (stepIndex === 2 && !form.consent) {
-    errors.consent = "Please confirm the information is accurate.";
-  }
-
   return errors;
+};
+
+const currencyFormat = new Intl.NumberFormat("en-CA", {
+  style: "currency",
+  currency: "CAD",
+});
+
+const dateFormat = new Intl.DateTimeFormat("en-CA", { dateStyle: "long" });
+
+const optionLabel = (field, value) =>
+  field.options.find((option) => option.value === value)?.label ?? value;
+
+const formatAnswer = (field, value) => {
+  if (isEmptyValue(field, value)) {
+    if (field.type === "checkbox-group") return "None selected";
+    if (field.type === "checkbox") return "Not confirmed";
+    return "—";
+  }
+
+  switch (field.type) {
+    case "select":
+    case "radio":
+      return optionLabel(field, value);
+    case "checkbox-group":
+      return value.map((v) => optionLabel(field, v)).join(", ");
+    case "checkbox":
+      return "Confirmed";
+    case "number": {
+      const amount = Number(value);
+      if (field.prefix === "$") return currencyFormat.format(amount);
+      return withUnits(field, amount.toLocaleString("en-CA"));
+    }
+    case "date": {
+      // Parse as a local date so the day doesn't shift across time zones.
+      const [year, month, day] = value.split("-").map(Number);
+      return dateFormat.format(new Date(year, month - 1, day));
+    }
+    default:
+      return value.trim();
+  }
 };
 
 /* -------------------------------------------------------------------------- */
@@ -432,9 +891,9 @@ const EmptyState = ({ query, level, onReset }) => (
   </div>
 );
 
-const Stepper = ({ current, onSelect }) => (
+const Stepper = ({ steps, current, onSelect }) => (
   <ol className="stepper" aria-label="Application progress">
-    {STEPS.map((step, index) => {
+    {steps.map((step, index) => {
       const isDone = index < current;
       const isActive = index === current;
       const stateClass = isDone
@@ -461,40 +920,227 @@ const Stepper = ({ current, onSelect }) => (
   </ol>
 );
 
-const Field = ({ field, value, error, onChange }) => {
+const FieldError = ({ id, message }) =>
+  message ? (
+    <span id={id} className="field__error" role="alert">
+      <CircleAlert size={13} aria-hidden="true" />
+      {message}
+    </span>
+  ) : null;
+
+const FieldHint = ({ id, text }) =>
+  text ? (
+    <span id={id} className="field__hint">
+      {text}
+    </span>
+  ) : null;
+
+const OptionalTag = ({ field }) =>
+  field.optional ? <span className="field__optional"> (optional)</span> : null;
+
+const FormField = ({ field, value, error, onChange }) => {
   const id = `field-${field.name}`;
-  const errorId = `${id}-error`;
+  const hintId = field.hint ? `${id}-hint` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const fieldClass = `field${field.full ? " field--full" : ""}${error ? " field--error" : ""}`;
+
+  // Single declaration checkbox, e.g. vision declaration.
+  if (field.type === "checkbox") {
+    return (
+      <div className={fieldClass}>
+        <label className={`checkbox${error ? " checkbox--error" : ""}`}>
+          <input
+            type="checkbox"
+            name={field.name}
+            checked={value}
+            aria-invalid={Boolean(error)}
+            aria-describedby={describedBy}
+            onChange={(e) => onChange(field.name, e.target.checked)}
+          />
+          <span>{field.label}</span>
+        </label>
+        <FieldHint id={hintId} text={field.hint} />
+        <FieldError id={errorId} message={error} />
+      </div>
+    );
+  }
+
+  // Radio buttons and multi-select checkboxes rendered as choice cards.
+  if (field.type === "radio" || field.type === "checkbox-group") {
+    const isMulti = field.type === "checkbox-group";
+    const toggle = (optionValue, checked) => {
+      if (!isMulti) return onChange(field.name, optionValue);
+      const selected = new Set(value);
+      if (checked) selected.add(optionValue);
+      else selected.delete(optionValue);
+      // Keep answers in option order regardless of click order.
+      onChange(
+        field.name,
+        field.options.map((o) => o.value).filter((v) => selected.has(v)),
+      );
+    };
+
+    return (
+      <fieldset
+        className={fieldClass}
+        aria-describedby={describedBy}
+        aria-invalid={Boolean(error)}
+      >
+        <legend className="field__label">
+          {field.label}
+          <OptionalTag field={field} />
+        </legend>
+        <div className="choice-group">
+          {field.options.map((option) => {
+            const checked = isMulti
+              ? value.includes(option.value)
+              : value === option.value;
+            return (
+              <label
+                key={option.value}
+                className={`choice${checked ? " choice--selected" : ""}`}
+              >
+                <input
+                  type={isMulti ? "checkbox" : "radio"}
+                  className="choice__input"
+                  name={field.name}
+                  value={option.value}
+                  checked={checked}
+                  onChange={(e) => toggle(option.value, e.target.checked)}
+                />
+                <span className="choice__text">
+                  <span className="choice__label">{option.label}</span>
+                  {option.hint && (
+                    <span className="choice__hint">{option.hint}</span>
+                  )}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <FieldHint id={hintId} text={field.hint} />
+        <FieldError id={errorId} message={error} />
+      </fieldset>
+    );
+  }
+
+  const commonProps = {
+    id,
+    name: field.name,
+    value,
+    "aria-invalid": Boolean(error),
+    "aria-required": !field.optional,
+    "aria-describedby": describedBy,
+  };
+
+  let control;
+  if (field.type === "select") {
+    control = (
+      <select
+        {...commonProps}
+        className="field__input field__select"
+        required={!field.optional}
+        onChange={(e) => onChange(field.name, e.target.value)}
+      >
+        <option value="" disabled>
+          Select an option
+        </option>
+        {field.options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  } else {
+    const listId = field.suggestions ? `${id}-suggestions` : undefined;
+    const inputClass = [
+      "field__input",
+      field.prefix && "field__input--has-prefix",
+      field.suffix && "field__input--has-suffix",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    control = (
+      <>
+        <div className="input-group">
+          {field.prefix && (
+            <span
+              className="input-group__affix input-group__affix--prefix"
+              aria-hidden="true"
+            >
+              {field.prefix}
+            </span>
+          )}
+          <input
+            {...commonProps}
+            type={field.type}
+            className={inputClass}
+            placeholder={field.placeholder}
+            autoComplete={field.autoComplete}
+            inputMode={field.inputMode}
+            maxLength={field.maxLength}
+            min={field.type === "date" ? undefined : field.min}
+            max={
+              field.type === "date"
+                ? field.notAfterToday
+                  ? todayISO()
+                  : undefined
+                : field.max
+            }
+            step={field.step}
+            list={listId}
+            onChange={(e) =>
+              onChange(
+                field.name,
+                field.transform === "uppercase"
+                  ? e.target.value.toUpperCase()
+                  : e.target.value,
+              )
+            }
+          />
+          {field.suffix && (
+            <span
+              className="input-group__affix input-group__affix--suffix"
+              aria-hidden="true"
+            >
+              {field.suffix}
+            </span>
+          )}
+        </div>
+        {listId && (
+          <datalist id={listId}>
+            {field.suggestions.map((suggestion) => (
+              <option key={suggestion} value={suggestion} />
+            ))}
+          </datalist>
+        )}
+      </>
+    );
+  }
+
   return (
-    <div
-      className={`field${field.full ? " field--full" : ""}${error ? " field--error" : ""}`}
-    >
+    <div className={fieldClass}>
       <label htmlFor={id} className="field__label">
         {field.label}
-        {field.optional && <span className="field__optional"> (optional)</span>}
+        {field.prefix || field.suffix ? (
+          <span className="sr-only">
+            {" "}
+            (in {field.prefix === "$" ? "dollars" : field.suffix})
+          </span>
+        ) : null}
+        <OptionalTag field={field} />
       </label>
-      <input
-        id={id}
-        name={field.name}
-        type={field.type}
-        className="field__input"
-        placeholder={field.placeholder}
-        autoComplete={field.autoComplete}
-        value={value}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? errorId : undefined}
-        onChange={(e) => onChange(field.name, e.target.value)}
-      />
-      {error && (
-        <span id={errorId} className="field__error" role="alert">
-          <CircleAlert size={13} aria-hidden="true" />
-          {error}
-        </span>
-      )}
+      {control}
+      <FieldHint id={hintId} text={field.hint} />
+      <FieldError id={errorId} message={error} />
     </div>
   );
 };
 
-const ReviewGroup = ({ step, form, onEdit }) => (
+const ReviewGroup = ({ step, formData, onEdit }) => (
   <div className="review-group">
     <div className="review-group__header">
       {step.title}
@@ -503,10 +1149,10 @@ const ReviewGroup = ({ step, form, onEdit }) => (
       </button>
     </div>
     <dl className="review-list">
-      {step.fields.map((field) => (
+      {visibleFields(step.fields, formData).map((field) => (
         <div key={field.name}>
-          <dt>{field.label}</dt>
-          <dd>{form[field.name].trim() || "—"}</dd>
+          <dt>{field.reviewLabel ?? field.label}</dt>
+          <dd>{formatAnswer(field, formData[field.name])}</dd>
         </div>
       ))}
     </dl>
@@ -514,14 +1160,17 @@ const ReviewGroup = ({ step, form, onEdit }) => (
 );
 
 const ApplicationModal = ({ service, onClose }) => {
+  const schema = APPLICATION_SCHEMAS[service.id];
+  const steps = useMemo(() => buildSteps(schema), [schema]);
+
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [formData, setFormData] = useState(() => buildInitialFormData(schema));
   const [errors, setErrors] = useState({});
   const [referenceId, setReferenceId] = useState(null);
   const bodyRef = useRef(null);
 
-  const lastStep = STEPS.length - 1;
-  const currentStep = STEPS[step];
+  const lastStep = steps.length - 1;
+  const currentStep = steps[step];
 
   // Close on Escape and lock background scroll while open.
   useEffect(() => {
@@ -537,14 +1186,14 @@ const ApplicationModal = ({ service, onClose }) => {
     };
   }, [onClose]);
 
-  // Move focus to the first input whenever the step changes.
+  // Move focus to the first control whenever the step changes.
   useEffect(() => {
-    bodyRef.current?.querySelector(".field__input")?.focus();
+    bodyRef.current?.querySelector(".fields input, .fields select")?.focus();
     bodyRef.current?.scrollTo({ top: 0 });
   }, [step]);
 
   const updateField = (name, value) => {
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => {
       if (!(name in prev)) return prev;
       const next = { ...prev };
@@ -560,7 +1209,13 @@ const ApplicationModal = ({ service, onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const stepErrors = validateStep(step, form);
+
+    const stepErrors =
+      step < lastStep
+        ? validateFields(currentStep.fields, formData)
+        : formData.consent
+          ? {}
+          : { consent: "Please confirm the information is accurate." };
     setErrors(stepErrors);
 
     const firstInvalid = Object.keys(stepErrors)[0];
@@ -619,26 +1274,27 @@ const ApplicationModal = ({ service, onClose }) => {
               </span>
               <p className="success__title">You're all set!</p>
               <p className="success__text">
-                We've received your {service.title.toLowerCase()} application. A
-                confirmation has been sent to <strong>{form.email}</strong>.
-                Estimated processing time: {service.time}.
+                We've received your {service.title.toLowerCase()} request.{" "}
+                {schema.confirmation} Estimated processing time: {service.time}.
               </p>
               <span className="success__ref">{referenceId}</span>
             </div>
           ) : (
             <>
-              <Stepper current={step} onSelect={goToStep} />
+              <Stepper steps={steps} current={step} onSelect={goToStep} />
 
-              <h3 className="form-section-title">{currentStep.title}</h3>
+              <h3 className="form-section-title">
+                Step {step + 1}: {currentStep.title}
+              </h3>
               <p className="form-section-text">{currentStep.description}</p>
 
               {step < lastStep ? (
                 <div className="fields fields--two">
-                  {currentStep.fields.map((field) => (
-                    <Field
+                  {visibleFields(currentStep.fields, formData).map((field) => (
+                    <FormField
                       key={field.name}
                       field={field}
-                      value={form[field.name]}
+                      value={formData[field.name]}
                       error={errors[field.name]}
                       onChange={updateField}
                     />
@@ -646,11 +1302,11 @@ const ApplicationModal = ({ service, onClose }) => {
                 </div>
               ) : (
                 <>
-                  {STEPS.slice(0, lastStep).map((s, index) => (
+                  {steps.slice(0, lastStep).map((s, index) => (
                     <ReviewGroup
                       key={s.id}
                       step={s}
-                      form={form}
+                      formData={formData}
                       onEdit={() => goToStep(index)}
                     />
                   ))}
@@ -660,7 +1316,7 @@ const ApplicationModal = ({ service, onClose }) => {
                     <input
                       type="checkbox"
                       name="consent"
-                      checked={form.consent}
+                      checked={formData.consent}
                       onChange={(e) => updateField("consent", e.target.checked)}
                     />
                     <span>
@@ -714,7 +1370,7 @@ const ApplicationModal = ({ service, onClose }) => {
               <div className="modal__footer-end">
                 {step < lastStep ? (
                   <button type="submit" className="btn btn--primary">
-                    Continue
+                    Next
                     <ChevronRight size={16} aria-hidden="true" />
                   </button>
                 ) : (
@@ -739,7 +1395,7 @@ const ApplicationModal = ({ service, onClose }) => {
 const CivicOS = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeLevel, setActiveLevel] = useState("All");
-  const [selectedService, setSelectedService] = useState(null);
+  const [activeService, setActiveService] = useState(null);
 
   const query = normalize(searchQuery);
 
@@ -773,7 +1429,7 @@ const CivicOS = () => {
     setActiveLevel("All");
   };
 
-  const closeModal = useCallback(() => setSelectedService(null), []);
+  const closeModal = useCallback(() => setActiveService(null), []);
 
   return (
     <div className="app">
@@ -811,7 +1467,7 @@ const CivicOS = () => {
                     <ServiceCard
                       key={service.id}
                       service={service}
-                      onStart={setSelectedService}
+                      onStart={setActiveService}
                     />
                   ))}
                 </div>
@@ -829,10 +1485,11 @@ const CivicOS = () => {
         </div>
       </div>
 
-      {selectedService && (
+      {/* Keyed by service so each application starts with a fresh formData. */}
+      {activeService && (
         <ApplicationModal
-          key={selectedService.id}
-          service={selectedService}
+          key={activeService.id}
+          service={activeService}
           onClose={closeModal}
         />
       )}

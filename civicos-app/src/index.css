@@ -107,9 +107,22 @@ ul {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
   color: inherit;
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
 }
 
 button {
@@ -1058,6 +1071,158 @@ button {
 .checkbox--error {
   border-color: var(--danger);
   background: var(--danger-soft);
+}
+
+/* Declarations rendered inside a step's field grid */
+.fields .checkbox {
+  margin-top: 0;
+}
+
+.field__hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Select */
+.field__select {
+  width: 100%;
+  padding-right: 36px;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.field__select:invalid {
+  color: var(--slate-400);
+}
+
+.field__select option {
+  color: var(--text);
+}
+
+/* Inputs with a prefix ($) or suffix (km, kWh) */
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-group .field__input {
+  width: 100%;
+}
+
+.input-group__affix {
+  position: absolute;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--slate-500);
+  pointer-events: none;
+}
+
+.input-group__affix--prefix {
+  left: 12px;
+}
+
+.input-group__affix--suffix {
+  right: 12px;
+}
+
+.field__input--has-prefix {
+  padding-left: 28px;
+}
+
+.field__input--has-suffix {
+  padding-right: 52px;
+}
+
+/* Hide number spinners; values are typed */
+.field__input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.field__input[type="number"]::-webkit-inner-spin-button,
+.field__input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Radio / checkbox choice cards */
+.choice-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.choice:hover {
+  border-color: var(--slate-400);
+}
+
+.choice:focus-within {
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
+.choice--selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.choice--selected:hover {
+  border-color: var(--primary);
+}
+
+.choice__input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+}
+
+.choice__input:focus-visible {
+  outline: none;
+}
+
+.choice__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.choice__label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--slate-800);
+}
+
+.choice__hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.field--error .choice {
+  border-color: var(--danger);
+}
+
+.field--error .choice--selected {
+  border-color: var(--primary);
 }
 
 /* ==========================================================================
