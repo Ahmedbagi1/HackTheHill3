@@ -8,12 +8,14 @@ One dashboard for 29 Federal (Government of Canada), Provincial (Ontario) and Mu
 - **"Money you might be missing" finder**: 5 questions run every calculator at once and lead with one total (cash benefits and grants only). Each result opens its application prefilled.
 - **Benefit calculators**: CCB, GST/HST credit (Canada Groceries and Essentials Benefit), OSAP, Canadian Dental Care Plan, ODSP and Ontario Works asset screens, using 2026–27 parameters.
 - **ElevenLabs voice companion**: "Explain to citizen" plain-language audio briefings with a live waveform. Falls back to the browser voice when no API key is configured.
+- **Auth0 accounts**: profile dialog, hosted sign-in/signup/password reset, real profile information and logout. [Auth0 setup and testing](docs/AUTH0.md) includes the required server-side email-verification Action.
 
 ## Run it
 
 ```bash
 npm install
-cp .env.example .env.local   # then add your ElevenLabs key (optional)
+cp .env.example .env.local   # only if .env.local does not already exist
+# Add your Auth0 Domain and Client ID; ElevenLabs is optional.
 npm run dev
 ```
 
@@ -26,7 +28,14 @@ npm run dev
 
 ### Environment
 
-Set these in `.env.local` (git-ignored). They're read only by the dev/preview server and are **never bundled into the browser**.
+Set these in `.env.local` (git-ignored). The Auth0 values are public SPA identifiers bundled into the browser. Never add a Client Secret. Complete the [Auth0 dashboard setup](docs/AUTH0.md) before testing sign-in.
+
+| Variable | Value |
+|---|---|
+| `VITE_AUTH0_DOMAIN` | Your Auth0 hostname, without `https://` |
+| `VITE_AUTH0_CLIENT_ID` | Your SPA application's Client ID |
+
+The following ElevenLabs variables are read only by the dev/preview server and are **never bundled into the browser**.
 
 | Variable | Default |
 |---|---|

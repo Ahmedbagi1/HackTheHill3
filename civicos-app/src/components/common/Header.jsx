@@ -1,4 +1,5 @@
-import { Bell, Landmark, User } from "lucide-react";
+import { Bell, Landmark } from "lucide-react";
+import AccountButton from "../account/AccountButton";
 
 const Header = ({ alertCount }) => (
   <header className="topbar">
@@ -19,9 +20,7 @@ const Header = ({ alertCount }) => (
           <Bell size={20} />
           {alertCount > 0 && <span className="icon-btn__badge">{alertCount}</span>}
         </a>
-        <button type="button" className="avatar" aria-label="Profile">
-          <User size={18} />
-        </button>
+        <AccountButton />
       </div>
     </div>
   </header>

@@ -1,0 +1,145 @@
+.account-dialog {
+  width: calc(100% - 32px);
+  max-width: 440px;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  animation: scale-in 0.18s ease-out;
+}
+
+.account-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.account-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.account-body,
+.account-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.account-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.account-description {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.account-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--primary-soft);
+  color: var(--slate-700);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.account-notice > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--primary);
+}
+
+.account-notice p + p,
+.account-notice strong + p {
+  margin-top: 6px;
+}
+
+.account-notice--error {
+  background: var(--danger-soft);
+}
+
+.account-notice--error > svg {
+  color: var(--danger);
+}
+
+.account-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.account-picture {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.account-picture img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-details {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+
+.account-details dt {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.account-details dd {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.account-verified {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--success);
+}
+
+.account-actions {
+  gap: 10px;
+}
+
+.account-actions .btn {
+  height: auto;
+  min-height: 40px;
+  padding: 10px 12px;
+  white-space: normal;
+}
+
+.account-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
