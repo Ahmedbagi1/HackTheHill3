@@ -17,11 +17,20 @@ import FieldRenderer from "./FieldRenderer";
 import ReviewSummary from "./ReviewSummary";
 import StepIndicator from "./StepIndicator";
 import { buildSteps } from "../../data/servicesData";
-import { buildInitialFormData, validateFields, visibleFields } from "../../lib/validation";
+import { DISPLAY_ONLY_TYPES, buildInitialFormData, isEmptyValue, validateFields, visibleFields } from "../../lib/validation";
+import { formatAnswer } from "../../lib/formatting";
 import { buildReviewPacketHtml, downloadReviewPacket } from "../../lib/reviewPacket";
 import { useDialogBehavior } from "../../hooks/useDialogBehavior";
 
 const makeReferenceId = () => `CIV-${Date.now().toString(36).toUpperCase()}`;
+
+/** First few answered questions, used as the request summary on the dashboard. */
+const summarizeAnswers = (steps, formData, limit = 3) =>
+  steps
+    .flatMap((step) => visibleFields(step.fields, formData))
+    .filter((field) => !DISPLAY_ONLY_TYPES.has(field.type) && !isEmptyValue(field, formData[field.name]))
+    .slice(0, limit)
+    .map((field) => ({ label: field.reviewLabel ?? field.label, value: formatAnswer(field, formData[field.name], formData) }));
 
 const printPacket = (packetInput) => {
   const url = URL.createObjectURL(
@@ -43,7 +52,7 @@ const printPacket = (packetInput) => {
  *   1. Primary details   2. Verification & requirements   3. Review & summary
  * Answers live in one `formData` object, so Back/Next never lose input.
  */
-const DynamicModalWizard = ({ service, prefill, onClose, onListen }) => {
+const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }) => {
   const steps = useMemo(() => buildSteps(service.form), [service]);
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState(() => {
@@ -112,7 +121,16 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen }) => {
     }
 
     if (step < lastStep) setStep(step + 1);
-    else setSubmission({ referenceId: makeReferenceId(), submittedAt: new Date() });
+    else {
+      const referenceId = makeReferenceId();
+      setSubmission({ referenceId, submittedAt: new Date() });
+      onSubmitted?.({
+        serviceId: service.id,
+        title: service.title,
+        referenceId,
+        summary: summarizeAnswers(steps.slice(0, lastStep), formData),
+      });
+    }
   };
 
   return (

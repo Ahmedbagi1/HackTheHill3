@@ -30,6 +30,7 @@
   --success-soft: #ecfdf5;
   --warning: #f59e0b;
   --warning-soft: #fffbeb;
+  --warning-text: #b45309;
   --danger: #e11d48;
   --danger-soft: #fff1f2;
 
@@ -42,9 +43,11 @@
   --federal-soft: #ffe4e6;
 
   /* Surfaces */
-  --bg: var(--slate-50);
+  --bg: #f6f7f9;
   --surface: #ffffff;
-  --border: var(--slate-200);
+  --surface-subtle: #fafbfc;
+  --border: #e6e8ec;
+  --border-strong: #d5d9e0;
   --text: var(--slate-900);
   --text-muted: var(--slate-500);
 
