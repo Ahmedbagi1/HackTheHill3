@@ -194,6 +194,114 @@ body {
   color: var(--slate-500);
 }
 
+/* Language selector */
+.lang {
+  position: relative;
+}
+
+.lang__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--slate-700);
+}
+
+.lang__button:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-subtle);
+}
+
+/* All labels share one cell: the button keeps the widest label's width, so switching never shifts the header. */
+.lang__labels {
+  display: inline-grid;
+}
+
+.lang__labels > span {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.lang__labels > span.is-current {
+  visibility: visible;
+}
+
+.lang__code {
+  display: none;
+  min-width: 2ch;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.lang__menu {
+  right: 0;
+  min-width: 240px;
+}
+
+.lang__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  text-align: left;
+  color: var(--slate-800);
+}
+
+.lang__option:hover,
+.lang__option:focus-visible,
+.lang__option[aria-selected="true"] {
+  background: var(--slate-100);
+}
+
+.lang__native {
+  font-weight: 600;
+}
+
+.lang__english {
+  flex: 1;
+  font-size: 12px;
+  color: var(--slate-500);
+}
+
+.lang__option svg {
+  margin-left: auto;
+  color: var(--primary);
+}
+
+/* Syllabics: fall through to a font that has the glyphs, keeping the UI font for Latin text. */
+:lang(iu) {
+  font-family: var(--font-sans), var(--font-syllabics), sans-serif;
+}
+
+.lang-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--slate-700);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lang-badge__note {
+  font-weight: 500;
+  color: var(--slate-500);
+}
+
 /* Notifications */
 .notifications {
   position: relative;
@@ -1502,6 +1610,14 @@ body {
     right: auto;
     width: 2px;
     height: auto;
+  }
+
+  .lang__labels {
+    display: none;
+  }
+
+  .lang__code {
+    display: inline;
   }
 
   .province__name {

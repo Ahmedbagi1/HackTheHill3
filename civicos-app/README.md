@@ -42,6 +42,9 @@ The following ElevenLabs variables are read only by the dev/preview server and a
 | `ELEVENLABS_API_KEY` | none (browser voice fallback) |
 | `ELEVENLABS_VOICE_ID` | `JBFqnCBsd6RMkjVDRZzb` |
 | `ELEVENLABS_MODEL_ID` | `eleven_multilingual_v2` |
+| `GEMINI_API_KEY` | none (Smart Triage, AI Explain and Quick Auto-Fill fall back to keyword search, catalog text and manual entry) |
+
+`GEMINI_API_KEY` is read only by `server/geminiProxy.js`, which calls `gemini-2.5-flash` for the browser. Don't name it `VITE_GEMINI_API_KEY`: `VITE_*` values are bundled into the page, where anyone can read them.
 
 `.env.example` is committed, so never put real keys in it.
 

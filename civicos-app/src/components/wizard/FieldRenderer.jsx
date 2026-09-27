@@ -1,31 +1,33 @@
 import { CircleAlert, Info } from "lucide-react";
 import { todayISO } from "../../lib/validation";
+import { useI18n } from "../../i18n/i18nContext";
+import Tx from "../../i18n/Tx";
 import EstimateCard from "./EstimateCard";
 import GeotagField from "./GeotagField";
 import WasteLookupField from "./WasteLookupField";
 
-const FieldError = ({ id, message }) =>
-  message ? (
+const FieldError = ({ id, message }) => {
+  const { t } = useI18n();
+  return message ? (
     <span id={id} className="field__error" role="alert">
       <CircleAlert size={13} aria-hidden="true" />
-      {message}
+      {t(message)}
     </span>
   ) : null;
+};
 
-const FieldHint = ({ id, text }) =>
-  text ? (
-    <span id={id} className="field__hint">
-      {text}
-    </span>
-  ) : null;
+const FieldHint = ({ id, text }) => (text ? <Tx as="span" id={id} className="field__hint" text={text} /> : null);
 
-const OptionalTag = ({ field }) =>
-  field.optional ? <span className="field__optional"> (optional)</span> : null;
+const OptionalTag = ({ field }) => {
+  const { t } = useI18n();
+  return field.optional ? <span className="field__optional"> ({t("optional")})</span> : null;
+};
 
 const applyTransform = (field, value) => (field.transform === "uppercase" ? value.toUpperCase() : value);
 
 /** Renders any field type defined in data/fieldBuilders.js. */
 const FieldRenderer = ({ field, value, error, formData, onChange }) => {
+  const { t } = useI18n();
   const id = `field-${field.name}`;
   const hintId = field.hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -38,7 +40,7 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
     return (
       <p className="field field--full callout">
         <Info size={16} aria-hidden="true" />
-        {field.label}
+        <Tx text={field.label} />
       </p>
     );
   }
@@ -58,7 +60,7 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
     return (
       <div className={fieldClass}>
         <label htmlFor={id} className="field__label">
-          {field.label}
+          <Tx text={field.label} />
           <OptionalTag field={field} />
         </label>
         <Widget
@@ -88,7 +90,7 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
             aria-describedby={describedBy}
             onChange={(e) => onChange(field.name, e.target.checked)}
           />
-          <span>{field.label}</span>
+          <Tx text={field.label} />
         </label>
         <FieldHint id={hintId} text={field.hint} />
         <FieldError id={errorId} message={error} />
@@ -112,7 +114,7 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
     return (
       <fieldset className={fieldClass} aria-describedby={describedBy} aria-invalid={Boolean(error)}>
         <legend className="field__label">
-          {field.label}
+          <Tx text={field.label} />
           <OptionalTag field={field} />
         </legend>
         <div className="choice-group">
@@ -129,8 +131,8 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
                   onChange={(e) => toggle(option.value, e.target.checked)}
                 />
                 <span className="choice__text">
-                  <span className="choice__label">{option.label}</span>
-                  {option.hint && <span className="choice__hint">{option.hint}</span>}
+                  <Tx className="choice__label" text={option.label} />
+                  {option.hint && <Tx className="choice__hint" text={option.hint} />}
                 </span>
               </label>
             );
@@ -163,11 +165,11 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
         onChange={(e) => onChange(field.name, e.target.value)}
       >
         <option value="" disabled>
-          Select an option
+          {t("Select an option")}
         </option>
         {field.options.map((option) => (
           <option key={option.value} value={option.value}>
-            {option.label}
+            {t(option.label)}
           </option>
         ))}
       </select>
@@ -180,7 +182,7 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
           className="field__input field__textarea"
           rows={field.rows}
           maxLength={field.maxLength}
-          placeholder={field.placeholder}
+          placeholder={field.placeholder && t(field.placeholder)}
           onChange={(e) => onChange(field.name, e.target.value)}
         />
         {field.maxLength && (
@@ -213,7 +215,7 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
             {...commonProps}
             type={field.type}
             className={inputClass}
-            placeholder={field.placeholder}
+            placeholder={field.placeholder && t(field.placeholder)}
             autoComplete={field.autoComplete}
             inputMode={field.inputMode}
             maxLength={field.maxLength}
@@ -225,14 +227,14 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
           />
           {field.suffix && (
             <span className="input-group__affix input-group__affix--suffix" aria-hidden="true">
-              {field.suffix}
+              {t(field.suffix)}
             </span>
           )}
         </div>
         {listId && (
           <datalist id={listId}>
             {field.suggestions.map((suggestion) => (
-              <option key={suggestion} value={suggestion} />
+              <option key={suggestion} value={t(suggestion)} />
             ))}
           </datalist>
         )}
@@ -243,9 +245,9 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
   return (
     <div className={fieldClass}>
       <label htmlFor={id} className="field__label">
-        {field.label}
-        {field.prefix === "$" && <span className="sr-only"> (in dollars)</span>}
-        {field.suffix && <span className="sr-only"> (in {field.suffix})</span>}
+        <Tx text={field.label} />
+        {field.prefix === "$" && <span className="sr-only"> ({t("in dollars")})</span>}
+        {field.suffix && <span className="sr-only"> ({t("in {unit}", { unit: t(field.suffix) })})</span>}
         <OptionalTag field={field} />
       </label>
       {control}

@@ -2,7 +2,7 @@ import { Check, ExternalLink, X } from "lucide-react";
 import { useDialogBehavior } from "../../hooks/useDialogBehavior";
 import { SERVICES_BY_ID } from "../../data/servicesData";
 import { DemoTag } from "../../components/ui/primitives";
-import { shortDate } from "../../lib/time";
+import { useI18n } from "../../i18n/i18nContext";
 import type { UserRequest } from "../../types/dashboard";
 import SavedApplicationDetails from './SavedApplicationDetails';
 
@@ -14,6 +14,7 @@ export default function RequestDetailsDialog({ request, onClose }: { request: Us
 
 function LocalRequestDetailsDialog({ request, onClose }: { request: UserRequest; onClose: () => void }) {
   useDialogBehavior(onClose);
+  const { t, tm, formatDate } = useI18n();
   const service = (SERVICES_BY_ID as Record<string, { officialUrl?: string; agency?: string } | undefined>)[request.serviceId];
 
   return (
@@ -30,11 +31,11 @@ function LocalRequestDetailsDialog({ request, onClose }: { request: UserRequest;
               <span className="mono">{request.referenceId}</span>
             </p>
             <h2 id="request-title" className="modal__title">
-              {request.title}
+              {t(request.title)}
               {request.demo && <DemoTag />}
             </h2>
           </div>
-          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+          <button type="button" className="icon-btn" aria-label={t("Close")} onClick={onClose}>
             <X size={20} />
           </button>
         </div>
@@ -46,12 +47,12 @@ function LocalRequestDetailsDialog({ request, onClose }: { request: UserRequest;
                   {stage.state === "done" && <Check size={11} strokeWidth={3} />}
                 </span>
                 <div>
-                  <p className="timeline__label">{stage.label}</p>
+                  <p className="timeline__label">{t(stage.label)}</p>
                   <p className="timeline__meta">
-                    {stage.state === "done" && stage.date && `Completed ${shortDate(stage.date)}`}
-                    {stage.state === "current" && (stage.date ? `Expected by ${shortDate(stage.date)}` : "In progress")}
-                    {stage.state === "blocked" && "Waiting on you"}
-                    {stage.state === "upcoming" && (stage.date ? `Around ${shortDate(stage.date)}` : "Upcoming")}
+                    {stage.state === "done" && stage.date && t("Completed {date}", { date: formatDate(stage.date) })}
+                    {stage.state === "current" && (stage.date ? t("Expected by {date}", { date: formatDate(stage.date) }) : t("In progress"))}
+                    {stage.state === "blocked" && t("Waiting on you")}
+                    {stage.state === "upcoming" && (stage.date ? t("Around {date}", { date: formatDate(stage.date) }) : t("Upcoming"))}
                   </p>
                 </div>
               </li>
@@ -60,27 +61,27 @@ function LocalRequestDetailsDialog({ request, onClose }: { request: UserRequest;
           <dl className="review-list">
             {request.summary.map((item) => (
               <div key={item.label}>
-                <dt>{item.label}</dt>
-                <dd>{item.value}</dd>
+                <dt>{t(item.label)}</dt>
+                <dd>{tm(item.value)}</dd>
               </div>
             ))}
             <div>
-              <dt>Submitted</dt>
-              <dd>{shortDate(request.submittedAt)}</dd>
+              <dt>{t("Submitted")}</dt>
+              <dd>{formatDate(request.submittedAt)}</dd>
             </div>
           </dl>
-          <p className="fineprint">Browser-only prototype record, not a Supabase submission. Stages are simulated. This reference is only for CivicOS and cannot be used with government programs.</p>
+          <p className="fineprint">{t("Browser-only prototype record, not a Supabase submission. Stages are simulated. This reference is only for CivicOS and cannot be used with government programs.")}</p>
         </div>
         <div className="modal__footer">
           {service?.officialUrl ? (
             <a className="btn btn--ghost" href={service.officialUrl} target="_blank" rel="noreferrer">
-              Official site <ExternalLink size={14} aria-hidden="true" />
+              {t("Official site")} <ExternalLink size={14} aria-hidden="true" />
             </a>
           ) : (
             <span />
           )}
           <button type="button" className="btn btn--primary" onClick={onClose}>
-            Done
+            {t("Done")}
           </button>
         </div>
       </div>

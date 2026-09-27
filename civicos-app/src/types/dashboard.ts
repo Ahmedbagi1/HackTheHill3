@@ -198,8 +198,15 @@ export interface NewsItem {
 export interface DashboardNotification {
   id: string;
   tone: Severity | "info";
+  /** English source text, translated at display time unless `sourceText` is set. */
   title: string;
   detail: string;
+  /** Prefix shown before the detail, e.g. the request's service name. */
+  context?: string;
+  /** Items joined into the detail line, each translated separately. */
+  detailParts?: string[];
+  /** Title and detail come from a third-party feed and stay in their source language (English). */
+  sourceText?: boolean;
   actionLabel?: string;
   target?: { type: "request"; id: string } | { type: "module"; id: RequestModuleId } | { type: "anchor"; id: string };
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
+import { useI18n } from "../../i18n/i18nContext";
 import type { DashboardNotification } from "../../types/dashboard";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function NotificationsMenu({ notifications, readIds, onMarkRead, onSelect }: Props) {
+  const { t, tp, locale } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const unread = notifications.filter((n) => !readIds.includes(n.id));
@@ -35,7 +37,7 @@ export default function NotificationsMenu({ notifications, readIds, onMarkRead, 
       <button
         type="button"
         className="icon-btn"
-        aria-label={`Notifications${unread.length ? ` (${unread.length} unread)` : ""}`}
+        aria-label={unread.length ? tp("Notifications ({count} unread)", "Notifications ({count} unread)", unread.length) : t("Notifications")}
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
@@ -45,17 +47,17 @@ export default function NotificationsMenu({ notifications, readIds, onMarkRead, 
       </button>
 
       {open && (
-        <div className="popover notifications__menu" role="dialog" aria-label="Notifications">
+        <div className="popover notifications__menu" role="dialog" aria-label={t("Notifications")}>
           <div className="notifications__head">
-            <strong>Notifications</strong>
+            <strong>{t("Notifications")}</strong>
             {unread.length > 0 && (
               <button type="button" className="link-btn" onClick={() => onMarkRead(unread.map((n) => n.id))}>
-                <CheckCheck size={14} aria-hidden="true" /> Mark all read
+                <CheckCheck size={14} aria-hidden="true" /> {t("Mark all read")}
               </button>
             )}
           </div>
           {notifications.length === 0 ? (
-            <p className="notifications__empty">You're all caught up.</p>
+            <p className="notifications__empty">{t("You're all caught up.")}</p>
           ) : (
             <ul className="notifications__list">
               {notifications.map((n) => (
@@ -70,11 +72,15 @@ export default function NotificationsMenu({ notifications, readIds, onMarkRead, 
                     }}
                   >
                     <span className={`notification__dot notification__dot--${n.tone}`} aria-hidden="true" />
-                    <span className="notification__body">
-                      <span className="notification__title">{n.title}</span>
-                      <span className="notification__detail">{n.detail}</span>
+                    <span className="notification__body" lang={n.sourceText && locale !== "en" ? "en" : undefined}>
+                      <span className="notification__title">{n.sourceText ? n.title : t(n.title)}</span>
+                      <span className="notification__detail">
+                        {n.sourceText
+                          ? n.detail
+                          : [n.context ? `${t(n.context)}: ` : "", n.detailParts ? n.detailParts.map((part) => t(part)).join(", ") : t(n.detail)].join("")}
+                      </span>
                     </span>
-                    {n.actionLabel && <span className="notification__action">{n.actionLabel}</span>}
+                    {n.actionLabel && <span className="notification__action">{t(n.actionLabel)}</span>}
                   </button>
                 </li>
               ))}

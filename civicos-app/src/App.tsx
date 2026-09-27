@@ -1,27 +1,30 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NotificationBanner from "./components/common/NotificationBanner";
 import { Skeleton } from "./components/ui/primitives";
 import { BANNER_NOTICE } from "./data/alerts";
 import { SERVICES, SERVICES_BY_ID } from "./data/servicesData";
 import { PROVINCES_BY_CODE } from "./data/provinces";
-import DashboardHeader from "./features/dashboard/DashboardHeader";
-import CitizenDashboard from "./features/dashboard/CitizenDashboard";
+import { buildDemoAgencyAlerts } from "./data/demoAlerts";
+import AlertsPage from "./features/alerts/AlertsPage";
 import { useDashboardSignals } from "./features/dashboard/useDashboardSignals";
-import ServiceDirectory from "./features/directory/ServiceDirectory";
-import ServiceNav from "./features/navigation/ServiceNav";
+import CitizenHub from "./features/hub/CitizenHub";
+import Sidebar from "./features/shell/Sidebar";
+import TopBar from "./features/shell/TopBar";
+import { useI18n } from "./i18n/i18nContext";
+import { LanguageProvider } from "./i18n/LanguageContext";
 import { buildDirectory, DEFAULT_FILTERS } from "./lib/directory";
 import { CivicDataProvider } from "./state/CivicDataContext";
 import { useCivicData } from "./state/civicDataStore";
 import { useDisruptions, useNews } from "./state/useCivicFeeds";
-import { useHashRoute, type ModuleRoute } from "./state/useHashRoute";
+import { useHashRoute, type ModuleRoute, type Route } from "./state/useHashRoute";
 import { useRegionalAlerts } from "./state/useRegionalAlerts";
 import { useWasteSchedule } from "./state/wasteSchedule";
 import type { DashboardNotification, ProvinceCode, UserRequest } from "./types/dashboard";
-import type { DirectoryFilters, IntentId, TierFilter } from "./types/directory";
+import type { DirectoryFilters, TierFilter } from "./types/directory";
 
 type CatalogService = (typeof SERVICES)[number];
 
-// Module pages and dialogs load on demand so the dashboard ships a smaller initial bundle.
+// Module pages and dialogs load on demand so the hub ships a smaller initial bundle.
 const HousingModule = lazy(() => import("./modules/housing/HousingModule"));
 const DoctorModule = lazy(() => import("./modules/doctor/DoctorModule"));
 const AutismModule = lazy(() => import("./modules/autism/AutismModule"));
@@ -29,10 +32,23 @@ const RequestDetailsDialog = lazy(() => import("./features/dashboard/RequestDeta
 const BenefitsFinder = lazy(() => import("./components/finder/BenefitsFinder"));
 const DynamicModalWizard = lazy(() => import("./components/wizard/DynamicModalWizard"));
 const ElevenLabsVoiceAssistant = lazy(() => import("./components/voice/ElevenLabsVoiceAssistant"));
+const NewApplicationDialog = lazy(() => import("./features/shell/NewApplicationDialog"));
+
+/** Anchors that live on the Disruptions & Alerts page. */
+const ALERT_PAGE_ANCHORS = new Set(["waste", "disruptions", "canada-alerts", "updates"]);
+const SIDEBAR_COLLAPSED_KEY = "civicos:sidebar-collapsed";
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function PageFallback() {
   return (
-    <main id="main" className="module" aria-busy="true">
+    <main id="main" className="page" aria-busy="true">
       <Skeleton lines={4} />
     </main>
   );
@@ -41,40 +57,72 @@ function PageFallback() {
 function AppShell() {
   const [route, navigate] = useHashRoute();
   const civic = useCivicData();
+  const { t, tm, locale, info } = useI18n();
   const province = PROVINCES_BY_CODE[civic.location.province];
 
   const [filters, setFilters] = useState<DirectoryFilters>(DEFAULT_FILTERS);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+  const [newAppOpen, setNewAppOpen] = useState(false);
   const [finderOpen, setFinderOpen] = useState(false);
-  const [wizard, setWizard] = useState<{
-    service: CatalogService;
-    prefill: Record<string, unknown> | null;
-  } | null>(null);
+  const [wizard, setWizard] = useState<{ service: CatalogService; prefill: Record<string, unknown> | null } | null>(null);
   const [voiceService, setVoiceService] = useState<CatalogService | null>(null);
   const [requestDetail, setRequestDetail] = useState<UserRequest | null>(null);
+  const pendingAnchor = useRef<string | null>(null);
 
   const waste = useWasteSchedule(province.fullCoverage ? civic.location.address : undefined);
   const origin = waste.state.status === "ready" ? { lat: waste.state.lat, lon: waste.state.lon } : null;
   const disruptions = useDisruptions(province.fullCoverage, origin);
-  const news = useNews(civic.location.province);
+  const news = useNews(civic.location.province, locale === "fr" ? "fr" : "en");
   const alerts = useRegionalAlerts();
   const { notifications, emergency } = useDashboardSignals(civic.requests, waste.state, disruptions.data);
 
-  const directory = useMemo(() => buildDirectory(filters, civic.location.province), [filters, civic.location.province]);
-  // Dashboard chips act as shortcuts into the whole directory, whatever filters were last used.
-  const shortcutCounts = useMemo(
-    () => buildDirectory({ ...DEFAULT_FILTERS, province: filters.province }, civic.location.province).intentCounts,
-    [filters.province, civic.location.province],
+  // Search indexes translations when they exist; untranslated keywords are simply skipped.
+  const language = useMemo(() => ({ locale, t: tm }), [locale, tm]);
+  const directory = useMemo(() => buildDirectory(filters, civic.location.province, language), [filters, civic.location.province, language]);
+
+  const demo = civic.requests.some((r) => r.demo);
+  const [demoAnchor] = useState(() => Date.now());
+  const provinceAlerts = useMemo(() => {
+    const items = [...(alerts.data?.items ?? []), ...(demo ? buildDemoAgencyAlerts(demoAnchor) : [])];
+    return items.filter((a) => a.jurisdiction === civic.location.province);
+  }, [alerts.data, demo, demoAnchor, civic.location.province]);
+
+  // Scroll to an anchor once the page that holds it has rendered.
+  useEffect(() => {
+    const anchor = pendingAnchor.current;
+    if (!anchor) return;
+    pendingAnchor.current = null;
+    window.setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }, [route]);
+
+  const go = useCallback(
+    (next: Route, anchor?: string) => {
+      setMenuOpen(false);
+      if (next === route) {
+        if (anchor) document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      pendingAnchor.current = anchor ?? null;
+      navigate(next);
+    },
+    [navigate, route],
   );
 
   const updateFilters = useCallback((patch: Partial<DirectoryFilters>) => setFilters((prev) => ({ ...prev, ...patch })), []);
   const resetFilters = useCallback(() => setFilters((prev) => ({ ...DEFAULT_FILTERS, province: prev.province })), []);
-  const browse = useCallback(
-    (patch: Partial<DirectoryFilters> = {}) => {
-      updateFilters(patch);
-      navigate("services");
-    },
-    [navigate, updateFilters],
-  );
+
+  const selectTier = (tier: TierFilter) => {
+    updateFilters({ tier });
+    go("dashboard", "services");
+  };
+
+  const onQuery = (query: string) => {
+    const starting = filters.query.trim() === "" && query.trim() !== "";
+    updateFilters({ query });
+    if (route !== "dashboard") go("dashboard", "services");
+    else if (starting) document.getElementById("services")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const openWizard = useCallback((service: CatalogService, prefill: Record<string, unknown> | null = null) => {
     setVoiceService(null);
@@ -83,11 +131,13 @@ function AppShell() {
   const closeWizard = useCallback(() => setWizard(null), []);
   const openVoice = useCallback((service: CatalogService) => setVoiceService(service), []);
   const closeVoice = useCallback(() => setVoiceService(null), []);
-  const openFinder = useCallback(() => setFinderOpen(true), []);
+  const openFinder = useCallback(() => {
+    setMenuOpen(false);
+    setFinderOpen(true);
+  }, []);
   const closeFinder = useCallback(() => setFinderOpen(false), []);
   const closeRequestDetail = useCallback(() => setRequestDetail(null), []);
-
-  const openModule = useCallback((id: ModuleRoute) => navigate(id), [navigate]);
+  const openModule = useCallback((id: ModuleRoute) => go(id), [go]);
 
   const openRequest = useCallback(
     (request: UserRequest) => {
@@ -106,86 +156,112 @@ function AppShell() {
     } else if (target.type === "module") {
       if (target.id !== "service") openModule(target.id);
     } else {
-      if (route !== "dashboard") navigate("dashboard");
-      window.setTimeout(() => document.getElementById(target.id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+      go(ALERT_PAGE_ANCHORS.has(target.id) ? "alerts" : "dashboard", target.id);
     }
   };
 
-  const goHome = () => navigate("dashboard");
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? "1" : "0");
+    } catch {
+      // Storage unavailable: the choice lasts for this visit.
+    }
+  }, [sidebarCollapsed]);
+
+  const goHome = () => go("dashboard");
 
   return (
-    <div className="app">
+    <div className={`shell${sidebarCollapsed ? " is-collapsed" : ""}`}>
       <a className="skip-link" href="#main">
-        Skip to main content
+        {t("Skip to main content")}
       </a>
-      {emergency ? (
-        <NotificationBanner
-          notice={{
-            id: emergency.id,
-            tone: "critical",
-            title: emergency.title,
-            text: emergency.text,
-          }}
-          actionLabel="Details"
-          onAction={emergency.sourceUrl ? () => window.open(emergency.sourceUrl, "_blank", "noopener") : undefined}
-        />
-      ) : (
-        <NotificationBanner notice={BANNER_NOTICE} actionLabel="Check what you qualify for" onAction={openFinder} />
-      )}
 
-      <DashboardHeader
-        notifications={notifications}
-        readIds={civic.data.readNotifications}
-        onMarkRead={civic.markNotificationsRead}
-        onSelectNotification={handleNotification}
-        onHome={goHome}
-      />
-
-      <ServiceNav
+      <Sidebar
         route={route}
         tier={filters.tier}
-        counts={directory.tierCounts}
+        tierCounts={directory.tierCounts}
         province={directory.province}
-        onHome={goHome}
-        onSelectTier={(tier: TierFilter) => browse({ tier })}
-        onSelectProvince={(code: ProvinceCode) => browse({ province: code, tier: "provincial" })}
+        alertCount={provinceAlerts.length}
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
+        onSelectTier={selectTier}
+        onSelectProvince={(code: ProvinceCode) => {
+          updateFilters({ province: code, tier: "provincial" });
+          go("dashboard", "services");
+        }}
+        onNavigate={(next) => go(next)}
+        onOpenFinder={openFinder}
       />
 
-      {route === "dashboard" && (
-        <CitizenDashboard
-          onSearch={(query: string) => browse({ query, tier: "all", intent: "all" })}
-          onSelectIntent={(intent: IntentId) => browse({ intent, tier: "all", query: "" })}
-          intentCounts={shortcutCounts}
-          onOpenModule={openModule}
-          onOpenFinder={openFinder}
-          onBrowse={() => browse({ tier: "all" })}
-          onOpenRequest={openRequest}
-          alerts={alerts}
-          disruptions={disruptions}
-          news={news}
-          waste={waste}
-        />
-      )}
-      {route === "services" && (
-        <ServiceDirectory
-          filters={filters}
-          directory={directory}
-          locationProvince={civic.location.province}
-          onChange={updateFilters}
-          onReset={resetFilters}
-          onStartService={openWizard}
-          onListen={openVoice}
-          onOpenModule={openModule}
-        />
-      )}
+      <div className="shell__main">
+        {emergency ? (
+          <NotificationBanner
+            notice={{ id: emergency.id, tone: "critical", title: emergency.title, text: emergency.text }}
+            actionLabel={t("Details")}
+            onAction={emergency.sourceUrl ? () => window.open(emergency.sourceUrl, "_blank", "noopener") : undefined}
+          />
+        ) : (
+          <NotificationBanner notice={BANNER_NOTICE} actionLabel={t("Check what you qualify for")} onAction={openFinder} />
+        )}
 
-      <Suspense fallback={<PageFallback />}>
-        {route === "housing" && <HousingModule onBack={goHome} />}
-        {route === "doctor" && <DoctorModule onBack={goHome} />}
-        {route === "autism" && <AutismModule onBack={goHome} />}
-      </Suspense>
+        <TopBar
+          query={filters.query}
+          onQuery={onQuery}
+          menuOpen={menuOpen}
+          onToggleMenu={() => setMenuOpen((o) => !o)}
+          onNewApplication={() => setNewAppOpen(true)}
+          notifications={notifications}
+          readIds={civic.data.readNotifications}
+          onMarkRead={civic.markNotificationsRead}
+          onSelectNotification={handleNotification}
+        />
+
+        {info.status === "draft" && (
+          <p className="draft-notice" role="note">
+            <span>{t("Draft translation")}</span>
+            <span lang="en">
+              Interface text is shown in {info.englishName}. Longer content still appears in English, marked EN, until fluent speakers review it.
+            </span>
+          </p>
+        )}
+
+        {route === "dashboard" && (
+          <CitizenHub
+            filters={filters}
+            directory={directory}
+            onChangeFilters={updateFilters}
+            onResetFilters={resetFilters}
+            onStartService={openWizard}
+            onListen={openVoice}
+            onOpenModule={openModule}
+            onOpenRequest={openRequest}
+            onOpenAlerts={(anchor) => go("alerts", anchor)}
+            waste={waste.state}
+            alertsInProvince={provinceAlerts.length}
+            criticalInProvince={provinceAlerts.filter((a) => a.severity === "critical").length}
+          />
+        )}
+        {route === "alerts" && <AlertsPage alerts={alerts} disruptions={disruptions} news={news} waste={waste} />}
+
+        <Suspense fallback={<PageFallback />}>
+          {route === "housing" && <HousingModule onBack={goHome} />}
+          {route === "doctor" && <DoctorModule onBack={goHome} />}
+          {route === "autism" && <AutismModule onBack={goHome} />}
+        </Suspense>
+      </div>
 
       <Suspense fallback={null}>
+        {newAppOpen && (
+          <NewApplicationDialog
+            locationProvince={civic.location.province}
+            onClose={() => setNewAppOpen(false)}
+            onStartService={openWizard}
+            onOpenModule={openModule}
+          />
+        )}
+
         {finderOpen && (
           <BenefitsFinder
             onClose={closeFinder}
@@ -212,9 +288,7 @@ function AppShell() {
             key={`voice-${voiceService.id}`}
             service={voiceService}
             onClose={closeVoice}
-            onStartApplication={(service: CatalogService) =>
-              wizard?.service.id === service.id ? closeVoice() : openWizard(service)
-            }
+            onStartApplication={(service: CatalogService) => (wizard?.service.id === service.id ? closeVoice() : openWizard(service))}
           />
         )}
       </Suspense>
@@ -224,8 +298,10 @@ function AppShell() {
 
 export default function App() {
   return (
-    <CivicDataProvider>
-      <AppShell />
-    </CivicDataProvider>
+    <LanguageProvider>
+      <CivicDataProvider>
+        <AppShell />
+      </CivicDataProvider>
+    </LanguageProvider>
   );
 }

@@ -81,6 +81,7 @@ import {
   wasteLookup,
   when,
 } from "./fieldBuilders";
+import { tr } from "../i18n/i18n";
 
 export const TIERS = ["Federal", "Provincial", "Municipal"];
 
@@ -89,6 +90,16 @@ export const TIER_DETAILS = {
   Provincial: { label: "Provincial", authority: "Government of Ontario" },
   Municipal: { label: "Municipal", authority: "City of Ottawa" },
 };
+
+const TIER_KEYS = {
+  All: "tier.all",
+  Federal: "tier.federal",
+  Provincial: "tier.provincial",
+  Municipal: "tier.municipal",
+};
+
+/** Display label for a tier id ("All", "Federal", …) in `lang`; ids themselves stay English. */
+export const tierLabel = (tier, lang = "en") => (TIER_KEYS[tier] ? tr(lang)(TIER_KEYS[tier]) : tier);
 
 const yesNo = [
   ["yes", "Yes"],
@@ -1566,15 +1577,26 @@ export const SERVICES = [...FEDERAL, ...PROVINCIAL, ...MUNICIPAL];
 
 export const SERVICES_BY_ID = Object.fromEntries(SERVICES.map((service) => [service.id, service]));
 
-/** Builds the three wizard steps for a service. */
-export const buildSteps = (form) => [
-  { id: "primary", label: "Details", title: "Primary details", ...form.primary },
-  { id: "verification", label: "Verification", title: "Verification & requirements", ...form.verification },
-  {
-    id: "review",
-    label: "Review",
-    title: "Review & summary",
-    description: "Check your answers, then submit. You can download a copy for your records.",
-    fields: [],
-  },
-];
+/** Builds the three wizard steps for a service, with step chrome in `lang`. */
+export const buildSteps = (form, lang = "en") => {
+  const t = tr(lang);
+  return [
+    { id: "primary", label: t("Details", "Détails"), title: t("Primary details", "Renseignements principaux"), ...form.primary },
+    {
+      id: "verification",
+      label: t("Verification", "Vérification"),
+      title: t("Verification & requirements", "Vérification et exigences"),
+      ...form.verification,
+    },
+    {
+      id: "review",
+      label: t("Review", "Révision"),
+      title: t("Review & summary", "Révision et résumé"),
+      description: t(
+        "Check your answers, then submit. You can download a copy for your records.",
+        "Vérifiez vos réponses, puis soumettez. Vous pouvez télécharger une copie pour vos dossiers.",
+      ),
+      fields: [],
+    },
+  ];
+};

@@ -1,6 +1,7 @@
 /**
  * Builds a self-contained, printable HTML "review packet" of a completed
  * application and triggers a download. All user input is HTML-escaped.
+ * `lang` (see lib/formatting.js) renders the packet in the active language.
  */
 
 import { formatAnswer } from "./formatting";
@@ -27,7 +28,10 @@ const PACKET_STYLES = `
   @media print{body{margin:0}}
 `;
 
-export function buildReviewPacketHtml({ service, steps, formData, referenceId, submittedAt = new Date() }) {
+const ENGLISH = { t: (text, params) => (params ? text.replace(/\{(\w+)\}/g, (m, k) => (params[k] ?? m)) : text), intl: "en-CA", htmlLang: "en-CA", formatDate: null };
+
+export function buildReviewPacketHtml({ service, steps, formData, referenceId, submittedAt = new Date(), lang = ENGLISH }) {
+  const { t } = lang;
   const sections = steps
     .filter((step) => step.fields.length)
     .map((step) => {
@@ -35,33 +39,33 @@ export function buildReviewPacketHtml({ service, steps, formData, referenceId, s
         .filter((field) => !DISPLAY_ONLY_TYPES.has(field.type) || field.type === "estimate")
         .map(
           (field) =>
-            `<tr><th>${escapeHtml(field.reviewLabel ?? field.label)}</th><td>${escapeHtml(
-              formatAnswer(field, formData[field.name], formData),
+            `<tr><th>${escapeHtml(t(field.reviewLabel ?? field.label))}</th><td>${escapeHtml(
+              formatAnswer(field, formData[field.name], formData, lang),
             )}</td></tr>`,
         )
         .join("");
-      return `<h2>${escapeHtml(step.title)}</h2><table>${rows}</table>`;
+      return `<h2>${escapeHtml(t(step.title))}</h2><table>${rows}</table>`;
     })
     .join("");
 
-  const requirements = service.requirements.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  const stamp = submittedAt.toLocaleString("en-CA", { dateStyle: "long", timeStyle: "short" });
+  const requirements = service.requirements.map((item) => `<li>${escapeHtml(t(item))}</li>`).join("");
+  const stamp = submittedAt.toLocaleString(lang.intl, { dateStyle: "long", timeStyle: "short" });
 
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(service.title)} — CivicOS review packet</title><style>${PACKET_STYLES}</style></head>
+<html lang="${escapeHtml(lang.htmlLang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(t("{service}: CivicOS review packet", { service: t(service.title) }))}</title><style>${PACKET_STYLES}</style></head>
 <body>
 <header>
-  <div class="meta">${escapeHtml(service.tier)} · ${escapeHtml(service.agency)}</div>
-  <h1>${escapeHtml(service.title)}</h1>
-  <div class="meta">${referenceId ? "Submitted" : "Draft prepared"} ${escapeHtml(stamp)}</div>
+  <div class="meta">${escapeHtml(t(service.tier))} · ${escapeHtml(t(service.agency))}</div>
+  <h1>${escapeHtml(t(service.title))}</h1>
+  <div class="meta">${escapeHtml(t(referenceId ? "Submitted {date}" : "Draft prepared {date}", { date: stamp }))}</div>
   ${referenceId ? `<div class="ref">${escapeHtml(referenceId)}</div>` : ""}
 </header>
 ${sections}
-<h2>Documents to have ready</h2><ul>${requirements}</ul>
-<div class="note">Prepared with CivicOS using test information. This packet is a summary for your records and is not an official government document.
-Nothing was submitted to a government service. Any reference identifies only the internal CivicOS prototype application.
-Official information: ${escapeHtml(service.officialUrl)}</div>
+<h2>${escapeHtml(t("Documents to have ready"))}</h2><ul>${requirements}</ul>
+<div class="note">${escapeHtml(t("Prepared with CivicOS using test information. This packet is a summary for your records and is not an official government document."))}
+${escapeHtml(t("Nothing was submitted to a government service. Any reference identifies only the internal CivicOS prototype application."))}
+${escapeHtml(t("Official information: {url}", { url: service.officialUrl }))}</div>
 </body></html>`;
 }
 

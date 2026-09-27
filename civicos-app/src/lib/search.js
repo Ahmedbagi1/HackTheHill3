@@ -10,7 +10,14 @@
  */
 
 const STOPWORDS = new Set(
-  "a an and are as at be but by can do does for from get go going have how i im in into is it its me my need of on or our so the their them to up want was we what when where which who will with you your help please".split(" "),
+  [
+    // English
+    "a an and are as at be but by can do does for from get go going have how i im in into is it its me my need of on or our so the their them to up want was we what when where which who will with you your help please",
+    // French (accents and apostrophes are stripped before this check)
+    "le la les l un une des de du d et en au aux pour sur dans par avec mon ma mes ton ta tes son sa ses notre votre nos vos leur leurs je jai ai il elle on nous vous ils elles est suis sont etre avoir que qui quoi comment ou besoin aide veux voudrais faire ce cette ces se ne pas svp",
+  ]
+    .join(" ")
+    .split(" "),
 );
 
 const SYNONYMS = {

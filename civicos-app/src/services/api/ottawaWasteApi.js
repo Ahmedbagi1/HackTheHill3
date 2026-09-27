@@ -9,6 +9,7 @@
  * SCHEDULE (A, B, A-Apt, B-Apt), CONTRACTOR.
  */
 
+import { tr } from "../../i18n/i18n";
 import { geocodeOttawaAddress, GeocodingError } from "./geocoding";
 
 const COLLECTION_DAYS_LAYER =
@@ -25,6 +26,16 @@ export class WasteLookupError extends Error {
     this.code = code; // "NOT_FOUND" | "OUTSIDE_SERVICE_AREA" | "NETWORK" | "UPSTREAM"
   }
 }
+
+/**
+ * Lookup errors are stored as their English message. English keeps that
+ * specific message; other languages get a localized general explanation.
+ */
+export const wasteLookupErrorMessage = (message, lang = "en") =>
+  tr(lang)(
+    message || "We couldn't find a collection schedule for that address.",
+    "Impossible de trouver l'horaire de collecte pour cette adresse. Vérifiez l'adresse ou réessayez sous peu.",
+  );
 
 export async function queryCollectionZone({ lat, lon }, { signal } = {}) {
   const params = new URLSearchParams({

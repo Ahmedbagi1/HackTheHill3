@@ -3,6 +3,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { auth0Configured } from "../lib/auth0";
 import { useServiceApplications } from './useServiceApplications';
 import { savedApplicationView } from './savedApplicationView';
+import { displayNameFor } from "../lib/displayName";
 import { DEFAULT_PROVINCE } from "../data/provinces";
 import type { LocationPreference, RequestAction } from "../types/dashboard";
 import type { VerificationStep } from "../types/doctor";
@@ -178,7 +179,10 @@ function CivicDataSessionProvider({ children }: { children: ReactNode }) {
             stageDays: { waiting: record.match.estimatedWaitWeeks * 7 },
             summary: [
               { label: "Clinic", value: `${record.match.clinic.name} (${record.match.clinic.neighbourhood})` },
-              { label: "Estimated wait", value: `about ${record.match.estimatedWaitWeeks} week${record.match.estimatedWaitWeeks === 1 ? "" : "s"}` },
+              {
+                label: "Estimated wait",
+                value: record.match.estimatedWaitWeeks === 1 ? "about 1 week" : `about ${record.match.estimatedWaitWeeks} weeks`,
+              },
               { label: "Priority", value: record.priority === "high" ? "Higher need" : "Standard" },
             ],
           },
@@ -300,7 +304,7 @@ function CivicDataSessionProvider({ children }: { children: ReactNode }) {
   const value: CivicDataContextValue = {
     userKey,
     signedIn,
-    displayName: signedIn ? (user?.given_name ?? user?.name ?? user?.nickname ?? null) : null,
+    displayName: signedIn ? displayNameFor(user) : null,
     emailVerified: Boolean(signedIn && user?.email_verified),
     data,
     requests,

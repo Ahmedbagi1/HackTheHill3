@@ -74,7 +74,14 @@ export class PersistenceError extends Error {
   }
 }
 
-export function readPersistenceConfig(env: Partial<ImportMetaEnv> = import.meta.env ?? {}): PersistenceConfig {
+// Read individual public values. Capturing all of import.meta.env would embed
+// unrelated VITE_* values (including mistakenly prefixed secrets) in the bundle.
+export function readPersistenceConfig(env: Partial<ImportMetaEnv> = {
+  VITE_AUTH0_DOMAIN: import.meta.env?.VITE_AUTH0_DOMAIN,
+  VITE_AUTH0_CLIENT_ID: import.meta.env?.VITE_AUTH0_CLIENT_ID,
+  VITE_SUPABASE_URL: import.meta.env?.VITE_SUPABASE_URL,
+  VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY,
+}): PersistenceConfig {
   const url = env.VITE_SUPABASE_URL?.trim() ?? '';
   const publishableKey = env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ?? '';
   const domain = env.VITE_AUTH0_DOMAIN?.trim() ?? '';

@@ -5,8 +5,9 @@
  *   GET /api/feeds/disruptions?lat=&lon=
  *       City of Ottawa traffic events, OC Transpo service updates, Hydro Ottawa
  *       outage summary. Returns the DisruptionFeed shape in src/types/dashboard.ts.
- *   GET /api/feeds/news?province=ON
- *       CBC national + provincial RSS headlines (NewsItem[]).
+ *   GET /api/feeds/news?province=ON&lang=en|fr
+ *       National + provincial headlines: CBC News (English) or Radio-Canada
+ *       (French) RSS, as NewsItem[].
  *   GET /api/feeds/alerts
  *       Pan-Canadian alerts: ECCC weather, DriveBC, Hydro-Québec, BC Hydro and
  *       Hydro Ottawa (RegionalAlertFeed in src/types/alerts.ts). The client
@@ -52,6 +53,34 @@ const PROVINCE_FEEDS = {
   YT: ["canada-north"],
 };
 const NATIONAL_FEEDS = ["canada", "politics"];
+
+/** Radio-Canada RSS paths (https://ici.radio-canada.ca/info/rss/<path>), verified September 2026. */
+const RC_RSS = (path) => `https://ici.radio-canada.ca/info/rss/${path}`;
+const RC_PROVINCE_FEEDS = {
+  AB: [["alberta/en-continu", "Alberta"]],
+  BC: [["colombie-britannique/en-continu", "Colombie-Britannique"]],
+  MB: [["manitoba/en-continu", "Manitoba"]],
+  NB: [["acadie/nouveau-brunswick/en-continu", "Nouveau-Brunswick"]],
+  NL: [["acadie/terre-neuve-et-labrador/en-continu", "Terre-Neuve-et-Labrador"]],
+  NS: [["acadie/nouvelle-ecosse/en-continu", "Nouvelle-Écosse"]],
+  NT: [["grand-nord/en-continu", "Grand Nord"]],
+  NU: [["grand-nord/en-continu", "Grand Nord"]],
+  ON: [
+    ["ottawa-gatineau/en-continu", "Ottawa-Gatineau"],
+    ["ontario/toronto/en-continu", "Toronto"],
+  ],
+  PE: [["acadie/ile-du-prince-edouard/en-continu", "Île-du-Prince-Édouard"]],
+  QC: [
+    ["grandmontreal/en-continu", "Grand Montréal"],
+    ["quebec/en-continu", "Québec"],
+  ],
+  SK: [["saskatchewan/en-continu", "Saskatchewan"]],
+  YT: [["grand-nord/en-continu", "Grand Nord"]],
+};
+const RC_NATIONAL_FEEDS = [
+  ["info/a-la-une", "À la une"],
+  ["politique/en-continu", "Politique"],
+];
 
 const DISRUPTION_TTL_MS = 2 * 60 * 1000;
 const ALERTS_TTL_MS = 3 * 60 * 1000;
@@ -365,25 +394,54 @@ async function loadNewsFeed(slug, scope) {
   }));
 }
 
-async function buildNews(province) {
+async function loadRadioCanadaFeed(path, label, scope) {
+  const items = parseRss(await fetchText(RC_RSS(path)));
+  return items.map((item) => ({
+    id: item.link,
+    title: item.title,
+    url: item.link,
+    source: "Radio-Canada",
+    category: label,
+    scope,
+    publishedAt: toIso(item.pubDate) ?? new Date(0).toISOString(),
+  }));
+}
+
+async function buildNews(province, lang = "en") {
+  if (lang === "fr") return buildFrenchNews(province);
+  return buildEnglishNews(province);
+}
+
+function mergeNews(results) {
+  const seen = new Set();
+  const items = results
+    .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
+    .filter((item) => item.url && !seen.has(item.url) && seen.add(item.url))
+    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+  return {
+    national: items.filter((i) => i.scope === "national").slice(0, 12),
+    provincial: items.filter((i) => i.scope === "provincial").slice(0, 12),
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+async function buildFrenchNews(province) {
+  const load = ([path, label], scope) => cached(`news:rc:${path}`, NEWS_TTL_MS, () => loadRadioCanadaFeed(path, label, scope));
+  const results = await Promise.allSettled([
+    ...RC_NATIONAL_FEEDS.map((feed) => load(feed, "national")),
+    ...(RC_PROVINCE_FEEDS[province] ?? RC_PROVINCE_FEEDS.ON).map((feed) => load(feed, "provincial")),
+  ]);
+  return mergeNews(results);
+}
+
+async function buildEnglishNews(province) {
   const provincialSlugs = PROVINCE_FEEDS[province] ?? PROVINCE_FEEDS.ON;
   const load = (slug, scope) => cached(`news:${slug}`, NEWS_TTL_MS, () => loadNewsFeed(slug, scope));
   const results = await Promise.allSettled([
     ...NATIONAL_FEEDS.map((slug) => load(slug, "national")),
     ...provincialSlugs.map((slug) => load(slug, "provincial")),
   ]);
-
-  const seen = new Set();
-  const items = results
-    .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
-    .filter((item) => item.url && !seen.has(item.url) && seen.add(item.url))
-    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
-
-  return {
-    national: items.filter((i) => i.scope === "national").slice(0, 12),
-    provincial: items.filter((i) => i.scope === "provincial").slice(0, 12),
-    fetchedAt: new Date().toISOString(),
-  };
+  return mergeNews(results);
 }
 
 /* ------------------------------------------------------------------ */
@@ -416,7 +474,8 @@ export function civicFeedsProxy() {
       if (url.pathname === "/api/feeds/news") {
         const province = (url.searchParams.get("province") ?? "ON").toUpperCase();
         if (!PROVINCE_FEEDS[province]) return sendJson(res, 400, { error: "Unknown province." });
-        return sendJson(res, 200, await buildNews(province));
+        const lang = url.searchParams.get("lang") === "fr" ? "fr" : "en";
+        return sendJson(res, 200, await buildNews(province, lang));
       }
       return sendJson(res, 404, { error: "Unknown feed." });
     } catch (error) {

@@ -1,6 +1,15 @@
 # CivicOS persistence setup
 
-## Current checkpoint: stage 3 UI connected; authenticated live check pending
+## Current checkpoint: stage 3 authenticated live check passed
+
+On 2026-09-27 the owner confirmed a verified Auth0 login, GST submission with a
+`CIV-` reference, the matching Supabase row, retained answers after refresh,
+private-view removal on logout, and restoration on login. This is a successful
+live authenticated persistence check. It does not establish a second-account
+isolation test or production deployment of this branch.
+
+See [production readiness and branch integration](PRODUCTION_READINESS.md) for
+the current audit, security fix, deployment limitations and release checklist.
 
 The user confirmed both SQL bundles were applied successfully. **Do not rerun
 either `setup.local.sql` or `application-api.local.sql`.** No further database,
@@ -26,7 +35,7 @@ existing functionality, with **Browser-only prototype** labels in the tracker.
 They are not silently uploaded or used as a fallback for failed Supabase reads.
 Extending persistence to those specialized intakes remains a separate stage.
 
-### Live check with your verified account
+### Live regression checklist with your verified account
 
 1. Open `http://localhost:5173`. If the local server is stopped, run `npm run dev`
    from `civicos-app`. Use **Profile** to sign in. Sign out/in once if your current
@@ -150,7 +159,7 @@ Editor verification does not manufacture an Auth0 session or prove network acces
 npm run test:db
 npm run test:persistence
 npm run test:persistence-ui
-npm run db:prepare-api
+npm run test:production
 npm run typecheck
 npm run build
 npm run lint
@@ -163,7 +172,7 @@ responses and transactional rollback. The client tests use the installed Supabas
 SDK with test-only HTTP/Auth0 stubs to verify the token, error handling, pagination
 and session changes. Test fixtures never enter the runtime or live database.
 They cannot prove live token signatures or authenticated hosted database access;
-the remaining live check is listed at the top of this document.
+the separately confirmed live check is recorded at the top of this document.
 
 The API requires `{ answers, consent: true, demoAcknowledged: true }`, rejects
 unknown fields, strips hidden/empty optional answers, and validates required
@@ -211,9 +220,9 @@ application data is inserted by setup. The next migration will introduce
 validated submission and lifecycle functions; baseline JSON object/size checks
 in this migration are not a replacement for per-service validation.
 
-**The current forms still use their existing browser storage.** The Supabase
-client and submission UI will be connected after the database stage is confirmed.
-There is no new fallback from Supabase errors to local/demo data.
+At the original stage 1 checkpoint the forms used browser storage. The 29 catalog
+forms now use Supabase as described above; Housing, Doctor and Autism remain
+browser-only. No Supabase error falls back to local/demo data.
 
 ## Prepare the SQL locally
 

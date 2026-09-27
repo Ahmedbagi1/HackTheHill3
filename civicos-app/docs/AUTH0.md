@@ -307,16 +307,17 @@ ignored `.env.local` supplies local builds and is not uploaded by Git. Never put
 an Auth0 Client Secret, a Supabase secret/service-role key, a database password,
 or a private external API key in a `VITE_*` variable.
 
-The Supabase names are documented in `.env.example` and `src/vite-env.d.ts`, but
-this checkout does not yet initialize a Supabase client or persist applications
-there. Setting the variables does not complete that integration. Keep the existing
+The Supabase client in `src/services/applicationRepository.ts` now persists the
+29 catalog forms using the verified Auth0 ID token. The database setup and live
+authenticated submission have passed; see [PERSISTENCE.md](PERSISTENCE.md).
+The Vite configuration exposes only the four named public values. Keep the existing
 Auth0 third-party integration and Supabase-role Action when using the same tenant
 and SPA; changing the CivicOS website origin does not change that identity setup.
 Preserve the verified-email Action and its application metadata as well.
 
 Vite's `server.port: 5173` and `strictPort: true` apply to local development. There
 is no need to put the production hostname in Vite's development-server settings.
-The `/api/tts` and `/api/feeds/*` middleware runs only under the current Vite
+The `/api/tts`, `/api/gemini/*` and `/api/feeds/*` middleware runs only under the current Vite
 dev/preview setup; publishing `dist` alone does not deploy those endpoints.
 Production needs corresponding server routes if those features are required.
 `ELEVENLABS_API_KEY` belongs only in that server's runtime environment.

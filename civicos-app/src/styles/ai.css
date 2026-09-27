@@ -1,0 +1,462 @@
+/* ==========================================================================
+   Gemini features: Smart Triage, AI Explain, Quick Auto-Fill
+   ========================================================================== */
+
+/* Search: triage button sits inside the input row ------------------------ */
+.search--triage .search__input {
+  padding-right: 8px;
+}
+
+.search--triage .search__clear {
+  position: static;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.search__triage {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  margin-right: 8px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    filter 0.15s,
+    opacity 0.15s;
+}
+
+.search__triage:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.search__triage:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.search__triage:focus-visible {
+  outline: 3px solid var(--primary-ring);
+  outline-offset: 2px;
+}
+
+/* Shared AI button (card "AI Explain", auto-fill, empty state) ------------ */
+.btn--ai {
+  border: 1px solid #c4b5fd;
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.btn--ai:hover:not(:disabled) {
+  border-color: #7c3aed;
+  background: #ede9fe;
+}
+
+/* Triage panel ----------------------------------------------------------- */
+.triage {
+  margin: 0 0 24px;
+  padding: 20px;
+  border: 1px solid #ddd6fe;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #faf5ff, var(--surface) 140px);
+  box-shadow: var(--shadow-sm);
+}
+
+.triage__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.triage__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6d28d9;
+}
+
+.triage__clear {
+  margin-left: auto;
+}
+
+.triage__urgency {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.triage__urgency--immediate {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.triage__urgency--high {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+
+.triage__urgency--standard {
+  background: var(--slate-100);
+  color: var(--slate-700);
+}
+
+.triage__guidance {
+  margin: 12px 0 0;
+  max-width: 72ch;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.triage__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.triage__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  font-size: 13.5px;
+  color: var(--slate-800);
+}
+
+.triage__step--service {
+  border-color: #c4b5fd;
+}
+
+.triage__step-num {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: #7c3aed;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.triage__grid {
+  margin-top: 22px;
+}
+
+.triage__disclaimer {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Loading: pulsing spark and shimmer lines */
+.triage--loading {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.triage__loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 600;
+  color: #6d28d9;
+}
+
+.triage__spark {
+  animation: ai-pulse 1.2s ease-in-out infinite;
+}
+
+.triage__shimmer {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.triage__shimmer span {
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--slate-100) 0%, #ede9fe 50%, var(--slate-100) 100%);
+  background-size: 200% 100%;
+  animation: ai-shimmer 1.4s linear infinite;
+}
+
+.triage__shimmer span:nth-child(2) {
+  width: 85%;
+}
+
+.triage__shimmer span:nth-child(3) {
+  width: 60%;
+}
+
+/* Fallback notice */
+.triage-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 10px 12px;
+  border: 1px solid var(--warning-soft);
+  border-radius: var(--radius);
+  background: #fffbeb;
+  color: var(--warning-text);
+  font-size: 14px;
+}
+
+.triage-notice p {
+  flex: 1;
+  margin: 0;
+}
+
+.triage-notice--inline {
+  margin-bottom: 16px;
+}
+
+/* Card badge for triage steps */
+.card__step--ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+}
+
+/* AI Explain dialog ------------------------------------------------------ */
+.ai-explain {
+  max-width: 620px;
+}
+
+.ai-explain__list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-explain__item {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-subtle);
+}
+
+.ai-explain__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.ai-explain__heading {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--slate-900);
+}
+
+.ai-explain__item p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--slate-700);
+}
+
+.ai-explain__loading {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-explain__no-audio {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* Quick Auto-Fill drawer ------------------------------------------------- */
+.autofill {
+  margin: 0 0 18px;
+  border: 1px dashed #c4b5fd;
+  border-radius: var(--radius);
+  background: #faf5ff;
+}
+
+.autofill__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #5b21b6;
+  cursor: pointer;
+  list-style: none;
+}
+
+.autofill__summary::-webkit-details-marker {
+  display: none;
+}
+
+.autofill__summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+}
+
+.autofill[open] .autofill__summary::after {
+  transform: rotate(-135deg);
+}
+
+.autofill__tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #ede9fe;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.autofill__body {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+.autofill__label {
+  font-size: 13.5px;
+  color: var(--slate-700);
+}
+
+.autofill__input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.autofill__input:focus {
+  border-color: var(--primary);
+  outline: 3px solid var(--primary-ring);
+}
+
+.autofill__privacy {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.autofill__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.autofill__status {
+  margin: 0;
+  font-size: 13px;
+}
+
+.autofill__ok,
+.autofill__error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.autofill__ok {
+  color: var(--success-hover);
+}
+
+.autofill__error {
+  color: var(--warning-text);
+}
+
+/* Fields filled by AI: brief green flash, then a quiet marker until edited */
+.field--ai-filled {
+  border-radius: var(--radius-sm);
+  box-shadow: inset 3px 0 0 var(--success);
+  animation: ai-filled 1.8s ease-out;
+}
+
+/* Keyframes -------------------------------------------------------------- */
+@keyframes ai-pulse {
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes ai-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes ai-filled {
+  0% {
+    background: var(--success-soft);
+    box-shadow:
+      inset 3px 0 0 var(--success),
+      0 0 0 4px var(--success-soft);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .triage__spark,
+  .triage__shimmer span,
+  .field--ai-filled {
+    animation: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .search__triage span {
+    display: none;
+  }
+
+  .search__triage {
+    padding: 0 12px;
+  }
+
+  .triage__clear {
+    margin-left: 0;
+  }
+}

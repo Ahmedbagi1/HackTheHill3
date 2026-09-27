@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { CircleAlert, CircleCheck, Info, OctagonAlert, TriangleAlert } from "lucide-react";
+import { useI18n } from "../../i18n/i18nContext";
 import type { Severity } from "../../types/dashboard";
 
 const SEVERITY_META: Record<Severity, { label: string; Icon: typeof Info }> = {
@@ -10,12 +11,13 @@ const SEVERITY_META: Record<Severity, { label: string; Icon: typeof Info }> = {
 
 /** Severity is always shown with an icon and a word, never colour alone. */
 export function SeverityBadge({ severity, label }: { severity: Severity; label?: string }) {
+  const { t } = useI18n();
   const meta = SEVERITY_META[severity];
   const Icon = meta.Icon;
   return (
     <span className={`sev sev--${severity}`}>
       <Icon size={12} aria-hidden="true" />
-      {label ?? meta.label}
+      {label ?? t(meta.label)}
     </span>
   );
 }
@@ -73,9 +75,10 @@ export function Notice({
 }
 
 export function DemoTag() {
+  const { t } = useI18n();
   return (
-    <span className="demo-tag" title="Illustrative data for demonstration">
-      Demo
+    <span className="demo-tag" title={t("Illustrative data for demonstration")}>
+      {t("Demo")}
     </span>
   );
 }
