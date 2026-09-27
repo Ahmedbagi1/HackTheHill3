@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { auth0Configured } from "../lib/auth0";
-import { SERVICE_CATEGORY } from "../data/categories";
+import { useServiceApplications } from './useServiceApplications';
+import { savedApplicationView } from './savedApplicationView';
 import { DEFAULT_PROVINCE } from "../data/provinces";
 import type { LocationPreference, RequestAction } from "../types/dashboard";
 import type { VerificationStep } from "../types/doctor";
@@ -71,8 +72,17 @@ function actionFor(stored: StoredRequest, data: CivicData): { action?: RequestAc
 
 export function CivicDataProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, user } = useAuth0();
+  const sessionKey = auth0Configured && isAuthenticated && user?.email_verified === true ? user.sub : 'guest';
+  // Remount every private view when identity changes; no old dialog, draft or
+  // in-flight result can carry over into a different account or logout screen.
+  return <CivicDataSessionProvider key={sessionKey}>{children}</CivicDataSessionProvider>;
+}
+
+function CivicDataSessionProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, user } = useAuth0();
   const signedIn = auth0Configured && isAuthenticated && user?.email_verified === true;
   const userKey = signedIn && user?.sub ? user.sub : "guest";
+  const servicePersistence = useServiceApplications(signedIn && user?.sub ? user.sub : null);
 
   const [state, setState] = useState(() => ({ key: userKey, data: readJson<CivicData>(dataKey(userKey), EMPTY_DATA) }));
   // Switch datasets when the signed-in user changes (derived-state pattern).
@@ -103,28 +113,6 @@ export function CivicDataProvider({ children }: { children: ReactNode }) {
 
   const addStored = (prev: CivicData, stored: StoredRequest, replaceModule: boolean): StoredRequest[] =>
     replaceModule ? [stored, ...prev.requests.filter((r) => r.module !== stored.module)] : [stored, ...prev.requests];
-
-  const submitServiceRequest: CivicDataContextValue["submitServiceRequest"] = useCallback(
-    ({ serviceId, title, referenceId, summary }) =>
-      update((prev) => ({
-        ...prev,
-        requests: addStored(
-          prev,
-          {
-            id: makeId(),
-            referenceId,
-            serviceId,
-            module: "service",
-            title,
-            category: SERVICE_CATEGORY[serviceId] ?? "community",
-            submittedAt: new Date().toISOString(),
-            summary,
-          },
-          false,
-        ),
-      })),
-    [update],
-  );
 
   const saveHousing: CivicDataContextValue["saveHousing"] = useCallback(
     (record) => {
@@ -299,7 +287,7 @@ export function CivicDataProvider({ children }: { children: ReactNode }) {
     [update],
   );
 
-  const requests = useMemo(
+  const localRequests = useMemo(
     () =>
       data.requests.map((stored) => {
         const { action, holdAt } = actionFor(stored, data);
@@ -307,6 +295,7 @@ export function CivicDataProvider({ children }: { children: ReactNode }) {
       }),
     [data],
   );
+  const requests = useMemo(() => [...servicePersistence.rows.map(savedApplicationView), ...localRequests], [servicePersistence.rows, localRequests]);
 
   const value: CivicDataContextValue = {
     userKey,
@@ -317,7 +306,8 @@ export function CivicDataProvider({ children }: { children: ReactNode }) {
     requests,
     location,
     setLocation,
-    submitServiceRequest,
+    servicePersistence,
+    submitServiceRequest: servicePersistence.submit,
     saveHousing,
     toggleHousingDocument,
     saveDoctor,

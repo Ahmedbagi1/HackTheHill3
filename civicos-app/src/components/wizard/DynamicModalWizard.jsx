@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,20 +17,9 @@ import FieldRenderer from "./FieldRenderer";
 import ReviewSummary from "./ReviewSummary";
 import StepIndicator from "./StepIndicator";
 import { buildSteps } from "../../data/servicesData";
-import { DISPLAY_ONLY_TYPES, buildInitialFormData, isEmptyValue, validateFields, visibleFields } from "../../lib/validation";
-import { formatAnswer } from "../../lib/formatting";
+import { DISPLAY_ONLY_TYPES, buildInitialFormData, validateFields, visibleFields } from "../../lib/validation";
 import { buildReviewPacketHtml, downloadReviewPacket } from "../../lib/reviewPacket";
 import { useDialogBehavior } from "../../hooks/useDialogBehavior";
-
-const makeReferenceId = () => `CIV-${Date.now().toString(36).toUpperCase()}`;
-
-/** First few answered questions, used as the request summary on the dashboard. */
-const summarizeAnswers = (steps, formData, limit = 3) =>
-  steps
-    .flatMap((step) => visibleFields(step.fields, formData))
-    .filter((field) => !DISPLAY_ONLY_TYPES.has(field.type) && !isEmptyValue(field, formData[field.name]))
-    .slice(0, limit)
-    .map((field) => ({ label: field.reviewLabel ?? field.label, value: formatAnswer(field, formData[field.name], formData) }));
 
 const printPacket = (packetInput) => {
   const url = URL.createObjectURL(
@@ -52,27 +41,34 @@ const printPacket = (packetInput) => {
  *   1. Primary details   2. Verification & requirements   3. Review & summary
  * Answers live in one `formData` object, so Back/Next never lose input.
  */
-const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }) => {
+const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted, signedIn }) => {
   const steps = useMemo(() => buildSteps(service.form), [service]);
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState(() => {
     const initial = buildInitialFormData(service.form);
     // Only accept prefilled keys this form actually has.
     for (const [key, value] of Object.entries(prefill ?? {})) {
-      if (key in initial && value !== undefined && value !== "") initial[key] = value;
+      if (key in initial && value !== undefined && value !== "") initial[key] = typeof value === 'number' ? String(value) : value;
     }
     return initial;
   });
   const isPrefilled = Boolean(prefill && Object.keys(prefill).length);
   const [errors, setErrors] = useState({});
   const [submission, setSubmission] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [demoAcknowledged, setDemoAcknowledged] = useState(false);
+  const [hasAttempt, setHasAttempt] = useState(false);
+  const attemptRef = useRef(null);
+  const busyRef = useRef(false);
   const bodyRef = useRef(null);
 
   const lastStep = steps.length - 1;
   const currentStep = steps[step];
   const answerSteps = steps.slice(0, lastStep);
 
-  useDialogBehavior(onClose);
+  const close = useCallback(() => { if (!busyRef.current) onClose(); }, [onClose]);
+  useDialogBehavior(close);
 
   // Focus the first control on each step and scroll back to the top.
   useEffect(() => {
@@ -98,38 +94,58 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
   const packetInput = (referenceId, submittedAt) => ({
     service,
     steps,
-    formData,
+    formData: submission ? { ...submission.payload.answers, consent: true } : formData,
     referenceId,
     submittedAt,
   });
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    if (busyRef.current || submission) return;
 
     const stepErrors =
       step < lastStep
         ? validateFields(currentStep.fields, formData)
-        : formData.consent
-          ? {}
-          : { consent: "Please confirm the information is accurate." };
+        : {
+          ...validateFields(answerSteps.flatMap((item) => item.fields), formData),
+          ...(!formData.consent && { consent: 'Please consent to saving this test application.' }),
+          ...(!demoAcknowledged && { demoAcknowledged: 'Confirm that you are using test information only.' }),
+        };
     setErrors(stepErrors);
 
     const firstInvalid = Object.keys(stepErrors)[0];
     if (firstInvalid) {
+      if (step === lastStep) {
+        const invalidStep = answerSteps.findIndex((item) => item.fields.some((field) => field.name === firstInvalid));
+        if (invalidStep >= 0) setStep(invalidStep);
+      }
       bodyRef.current?.querySelector(`[name="${firstInvalid}"], #field-${firstInvalid}`)?.focus();
       return;
     }
 
     if (step < lastStep) setStep(step + 1);
     else {
-      const referenceId = makeReferenceId();
-      setSubmission({ referenceId, submittedAt: new Date() });
-      onSubmitted?.({
-        serviceId: service.id,
-        title: service.title,
-        referenceId,
-        summary: summarizeAnswers(steps.slice(0, lastStep), formData),
-      });
+      if (!signedIn) { setSaveError('Sign in with a verified account using Profile before starting your application.'); return; }
+      if (!attemptRef.current) {
+        const fields = answerSteps.flatMap((item) => item.fields).filter((field) => !DISPLAY_ONLY_TYPES.has(field.type));
+        attemptRef.current = {
+          serviceId: service.id, requestKey: crypto.randomUUID(),
+          payload: { answers: Object.fromEntries(fields.map((field) => [field.name, formData[field.name]])), consent: true, demoAcknowledged: true },
+        };
+        setHasAttempt(true);
+      }
+      busyRef.current = true; setBusy(true); setSaveError(null);
+      try {
+        const saved = await onSubmitted(attemptRef.current);
+        setSubmission({ referenceId: saved.reference_id, submittedAt: new Date(saved.submitted_at), payload: saved.payload });
+      } catch (error) {
+        setSaveError(error.message || 'Saving could not be confirmed. Retry before starting another application.');
+        // Only a definite validation rejection permits editing. A lost response
+        // may follow a committed insert, so retries keep identical answers/key.
+        if (error.code === 'VALIDATION') { attemptRef.current = null; setHasAttempt(false); }
+      } finally {
+        busyRef.current = false; setBusy(false);
+      }
     }
   };
 
@@ -137,7 +153,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
     <div
       className="modal-backdrop"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) close();
       }}
     >
       <form
@@ -168,7 +184,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
             >
               <Volume2 size={19} />
             </button>
-            <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <button type="button" className="icon-btn" aria-label="Close" onClick={close} disabled={busy}>
               <X size={20} />
             </button>
           </div>
@@ -180,10 +196,10 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
               <span className="success__icon" aria-hidden="true">
                 <CircleCheck size={34} />
               </span>
-              <p className="success__title">You're all set!</p>
+              <p className="success__title">Saved to your CivicOS account</p>
               <p className="success__text">
-                We've received your {service.title} request. {service.form.confirmation} Estimated
-                time: {service.time}.
+                Your test application is saved. Return to Your requests to view it or try prototype processing.
+                Nothing was sent to a government service.
               </p>
               <span className="success__ref">{submission.referenceId}</span>
               <div className="success__actions">
@@ -208,6 +224,11 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
             </div>
           ) : (
             <>
+              <p className="callout">Demo environment — use test information only. Do not enter real government identification numbers or sensitive personal information. Nothing is sent to government systems.</p>
+              {!signedIn && <p className="field__error" role="alert">Sign in with a verified account using Profile before filling this form. Signing in clears this unsaved draft.</p>}
+              {saveError && <p className="field__error" role="alert">{saveError} {hasAttempt && 'Your answers are kept for an identical retry. If you close this form, check Your requests before submitting again.'}</p>}
+              {busy && <p role="status">Saving your application…</p>}
+              <fieldset disabled={busy || hasAttempt} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
               <StepIndicator steps={steps} current={step} onSelect={goToStep} />
 
               {isPrefilled && step === 0 && (
@@ -250,8 +271,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
                       onChange={(e) => updateField("consent", e.target.checked)}
                     />
                     <span>
-                      I confirm the information above is accurate and I consent to it being used to
-                      process this request.
+                      I consent to saving these test answers in my CivicOS account for prototype processing.
                     </span>
                   </label>
                   {errors.consent && (
@@ -260,6 +280,11 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
                       {errors.consent}
                     </p>
                   )}
+                  <label className="checkbox">
+                    <input type="checkbox" name="demoAcknowledged" checked={demoAcknowledged} onChange={(e) => setDemoAcknowledged(e.target.checked)} />
+                    <span>I am using test information only, including test identification numbers.</span>
+                  </label>
+                  {errors.demoAcknowledged && <p className="field__error" role="alert">{errors.demoAcknowledged}</p>}
                   <button
                     type="button"
                     className="link-btn review-download"
@@ -269,6 +294,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
                   </button>
                 </>
               )}
+              </fieldset>
             </>
           )}
         </div>
@@ -283,7 +309,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
           ) : (
             <>
               {step > 0 ? (
-                <button type="button" className="btn btn--secondary" onClick={() => goToStep(step - 1)}>
+                <button type="button" className="btn btn--secondary" onClick={() => goToStep(step - 1)} disabled={busy || hasAttempt}>
                   <ChevronLeft size={16} aria-hidden="true" />
                   Back
                 </button>
@@ -299,9 +325,9 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
                     <ChevronRight size={16} aria-hidden="true" />
                   </button>
                 ) : (
-                  <button type="submit" className="btn btn--success">
+                  <button type="submit" className="btn btn--success" disabled={busy || !signedIn}>
                     <ShieldCheck size={16} aria-hidden="true" />
-                    Submit application
+                    {busy ? 'Saving…' : hasAttempt ? 'Retry save' : 'Submit application'}
                   </button>
                 )}
               </div>

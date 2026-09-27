@@ -4,6 +4,7 @@ import type { HousingApplicationRecord } from "../types/housing";
 import type { DoctorWaitlistRecord, VerificationStep } from "../types/doctor";
 import type { AutismProgramRecord, ClaimStatus, FundingClaim } from "../types/autism";
 import type { StoredRequest } from "./requestTimeline";
+import type { ServicePersistence } from './useServiceApplications';
 
 /** Persisted per-user dataset. */
 export interface CivicData {
@@ -23,7 +24,8 @@ export interface CivicDataContextValue {
   requests: UserRequest[];
   location: LocationPreference;
   setLocation: (next: Partial<LocationPreference>) => void;
-  submitServiceRequest: (input: { serviceId: string; title: string; referenceId: string; summary: UserRequest["summary"] }) => void;
+  servicePersistence: ServicePersistence;
+  submitServiceRequest: ServicePersistence['submit'];
   saveHousing: (record: Omit<HousingApplicationRecord, "requestId" | "submittedAt">) => string;
   toggleHousingDocument: (documentId: string) => void;
   saveDoctor: (record: Omit<DoctorWaitlistRecord, "requestId" | "submittedAt">) => string;

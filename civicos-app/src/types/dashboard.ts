@@ -76,6 +76,9 @@ export interface RequestAction {
 export type RequestModuleId = "housing" | "doctor" | "autism" | "service";
 
 export interface UserRequest {
+  persistence?: 'supabase';
+  status?: import('../services/applicationRepository').ApplicationStatus;
+  revision?: number;
   id: string;
   referenceId: string;
   /** Catalog service id (servicesData.js) or module id. */

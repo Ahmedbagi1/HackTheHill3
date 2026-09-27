@@ -15,6 +15,11 @@ dist-ssr
 .env.*
 !.env.example
 
+# Locally generated database setup bundles (deployment-specific configuration).
+supabase/*.local.sql
+playwright-report/
+test-results/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

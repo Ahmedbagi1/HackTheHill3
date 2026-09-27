@@ -58,6 +58,7 @@ import {
 import { estimateVehicleSalesTax, screenBuildingPermit, screenPrResidency } from "../lib/screeners";
 import {
   PATTERNS,
+  allWhen,
   checks,
   date,
   dateOfBirth,
@@ -269,7 +270,7 @@ const FEDERAL = [
             showIf: when("requestType", "report"),
           }),
           money("periodEarnings", "Gross earnings for the period", {
-            showIf: (d) => d.requestType === "report" && d.workedDuringPeriod === "yes",
+            showIf: allWhen(when("requestType", "report"), when("workedDuringPeriod", "yes")),
           }),
           radio("availableForWork", "Were you ready, willing and able to work each day?", yesNo),
         ],
@@ -399,6 +400,7 @@ const FEDERAL = [
           number("childrenUnder6", "Children under 6", { max: 12 }),
           number("children6to17", "Children aged 6 to 17", {
             max: 12,
+            serverRule: "at-least-one-child",
             validate: (value, data) =>
               Number(data.childrenUnder6 || 0) + Number(value || 0) > 0 ? null : "Add at least one child under 18.",
           }),
@@ -549,6 +551,7 @@ const FEDERAL = [
           ]),
           fullName(),
           dateOfBirth({
+            serverRule: "adult-voter",
             validate: (value) => {
               const [y, m, d] = value.split("-").map(Number);
               const today = new Date();
@@ -1205,6 +1208,7 @@ const MUNICIPAL = [
             ["water", "Water & sewer"],
           ]),
           text("rollNumber", "Roll number", {
+            serverRule: "roll-number",
             placeholder: "0614 000 000 00000 0000",
             inputMode: "numeric",
             full: true,

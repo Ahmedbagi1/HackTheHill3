@@ -87,6 +87,7 @@ export default function CitizenDashboard({
             requests={requests}
             onOpen={onOpenRequest}
             onWithdraw={(r) => {
+              if (r.persistence === 'supabase') { onOpenRequest(r); return; }
               if (window.confirm(`Withdraw "${r.title}" from your dashboard?`)) withdrawRequest(r.id);
             }}
             onSeedDemo={seedDemo}

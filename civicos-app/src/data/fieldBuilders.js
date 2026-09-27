@@ -105,10 +105,18 @@ export const validateSin = (value) => {
 };
 
 /** Returns a showIf predicate: the named field equals one of the values. */
-export const when =
-  (name, ...values) =>
-  (data) =>
-    values.includes(data[name]);
+export const when = (name, ...values) => {
+  const predicate = (data) => values.includes(data[name]);
+  // Serializable metadata lets the database enforce the same visible fields.
+  predicate.conditions = [{ name, values }];
+  return predicate;
+};
+
+export const allWhen = (...predicates) => {
+  const predicate = (data) => predicates.every((condition) => condition(data));
+  predicate.conditions = predicates.flatMap((condition) => condition.conditions);
+  return predicate;
+};
 
 /* ------------------------------------------------------------------------ */
 /* Builders                                                                 */
@@ -302,6 +310,7 @@ export const sinField = (opts = {}) =>
     maxLength: 11,
     autoComplete: "off",
     validate: validateSin,
+    serverRule: "sin",
     hint: "Used only to match your file. Never share it by email.",
     ...opts,
   });

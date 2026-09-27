@@ -524,6 +524,8 @@
 }
 
 .success__ref {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   margin-top: 8px;
   padding: 8px 14px;
   border-radius: var(--radius-sm);
