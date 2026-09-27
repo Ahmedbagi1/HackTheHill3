@@ -15,6 +15,7 @@
     "test:persistence": "node --experimental-strip-types --test tests/application-client.test.mjs",
     "test:persistence-ui": "playwright test",
     "test:production": "node --test tests/production-build.test.mjs",
+    "test:gemini": "node --test tests/gemini*.test.mjs",
     "i18n:audit": "node scripts/i18n-audit.mjs"
   },
   "dependencies": {

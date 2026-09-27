@@ -8,6 +8,9 @@ import { geminiProxy } from "./server/geminiProxy.js";
 export default defineConfig(({ mode }) => {
   // Load all env vars (not just VITE_*) so the ElevenLabs and Gemini keys stay server-side.
   const env = loadEnv(mode, process.cwd(), "");
+  // Vite does not populate process.env from .env.local. Keep this private value
+  // in the Node process so local and Vercel handlers use the same runtime lookup.
+  if (env.GEMINI_API_KEY) process.env.GEMINI_API_KEY ??= env.GEMINI_API_KEY;
 
   return {
     // Only these identifiers are browser configuration. Never expose arbitrary
@@ -26,7 +29,7 @@ export default defineConfig(({ mode }) => {
         modelId: env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2",
       }),
       civicFeedsProxy(),
-      geminiProxy({ apiKey: env.GEMINI_API_KEY, legacyClientKey: env.VITE_GEMINI_API_KEY }),
+      geminiProxy(),
     ],
     build: {
       rolldownOptions: {

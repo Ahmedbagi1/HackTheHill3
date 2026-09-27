@@ -3,6 +3,19 @@
 Audit date: 2026-09-27. Working branch: **databaseUpdate**. Target: **main**.
 Canonical origin: **https://www.civicos.work**. Local: **http://localhost:5173**.
 
+## Gemini follow-up (2026-09-27)
+
+The owner confirmed key rotation/revocation and Vercel environment cleanup.
+The owner also confirmed the published Gemini firewall rule (10 POSTs/IP per
+60 seconds, enforced with 429). Gemini implementation and local validation are
+complete; no further Gemini setup checkpoint blocks branch integration.
+A shared Gemini handler and Vercel `/api/gemini/[task].js` endpoint are now
+implemented on databaseUpdate; see [GEMINI.md](GEMINI.md) for current deployment
+checks and test evidence. No production deployment was performed. The older
+Gemini hosting/key-remediation findings below describe the earlier audit;
+voice/feed hosting limitations still apply. AI components remain unmounted as
+requested: this follow-up is API-only. Auth0/Supabase were not changed.
+
 ## Release decision
 
 The 29 catalog forms are ready for a **test-data-only hackathon persistence
