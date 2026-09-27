@@ -13,9 +13,9 @@ const ReviewGroup = ({ step, formData, onEdit }) => {
     <div className="review-group">
       <div className="review-group__header">
         {t(step.title)}
-        <button type="button" className="link-btn" onClick={onEdit}>
+        {onEdit && <button type="button" className="link-btn" onClick={onEdit}>
           <Pencil size={12} aria-hidden="true" /> {t("Edit")}
-        </button>
+        </button>}
       </div>
       <dl className="review-list">
         {rows.map((field) => (
@@ -35,7 +35,7 @@ const ReviewSummary = ({ steps, formData, requirements, onEdit }) => {
   return (
     <>
       {steps.map((step, index) => (
-        <ReviewGroup key={step.id} step={step} formData={formData} onEdit={() => onEdit(index)} />
+        <ReviewGroup key={step.id} step={step} formData={formData} onEdit={onEdit ? () => onEdit(index) : undefined} />
       ))}
       {requirements.length > 0 && (
         <div className="review-group">

@@ -277,6 +277,7 @@ function AppShell() {
             onClose={closeWizard}
             onListen={openVoice}
             onSubmitted={civic.submitServiceRequest}
+            signedIn={civic.signedIn}
           />
         )}
 

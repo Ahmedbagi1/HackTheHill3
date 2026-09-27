@@ -1,5 +1,7 @@
 import { ArrowRight, Check, CircleAlert, ClipboardList, Hourglass, Sparkles, Trash } from "lucide-react";
 import { DemoTag, SectionCard } from "../../components/ui/primitives";
+import { useCivicData } from '../../state/civicDataStore';
+import { APPLICATION_STATUS_LABELS } from '../../state/savedApplicationView';
 import { useI18n } from "../../i18n/i18nContext";
 import type { UserRequest } from "../../types/dashboard";
 
@@ -40,7 +42,8 @@ function StageTrack({ request }: { request: UserRequest }) {
 function RequestCard({ request, onOpen, onWithdraw }: { request: UserRequest; onOpen: Props["onOpen"]; onWithdraw: Props["onWithdraw"] }) {
   const { t, tm, formatDate } = useI18n();
   const current = request.stages[request.currentStage];
-  const complete = request.currentStage === request.stages.length - 1 && current.state === "done";
+  const complete = request.persistence === 'supabase' ? request.status === 'completed' : request.currentStage === request.stages.length - 1 && current.state === "done";
+  const terminal = request.status && ['completed', 'rejected', 'withdrawn'].includes(request.status);
   return (
     <article className={`request${request.actionRequired ? " request--action" : ""}`}>
       <header className="request__head">
@@ -50,11 +53,12 @@ function RequestCard({ request, onOpen, onWithdraw }: { request: UserRequest; on
             {request.demo && <DemoTag />}
           </h3>
           <p className="request__meta">
-            <span className="mono">{request.referenceId}</span> · {t("Submitted {date}", { date: formatDate(request.submittedAt) })}
+            <span className="mono" style={{ overflowWrap: 'anywhere' }}>{request.referenceId}</span> · {t("Submitted {date}", { date: formatDate(request.submittedAt) })}
+            <br />{t(request.persistence === 'supabase' ? 'Saved to your account · Prototype processing' : 'Browser-only prototype · Not saved to Supabase')}
           </p>
         </div>
         <span className={`request__status request__status--${complete ? "done" : current.state}`}>
-          {complete ? t("Complete") : current.state === "blocked" ? t("Action required") : t(current.label)}
+          {t(request.status ? APPLICATION_STATUS_LABELS[request.status] : complete ? "Complete" : current.state === "blocked" ? "Action required" : current.label)}
         </span>
       </header>
 
@@ -69,9 +73,9 @@ function RequestCard({ request, onOpen, onWithdraw }: { request: UserRequest; on
             </div>
           )}
           <div>
-            <dt>{t("Estimated completion")}</dt>
+            <dt>{t(request.persistence === 'supabase' ? 'Processing' : 'Estimated completion')}</dt>
             <dd>
-              {request.estimatedCompletion ? (
+              {request.persistence === 'supabase' ? t('Internal prototype; no government ETA') : request.estimatedCompletion ? (
                 formatDate(request.estimatedCompletion)
               ) : request.actionRequired ? (
                 t("After your action")
@@ -99,9 +103,9 @@ function RequestCard({ request, onOpen, onWithdraw }: { request: UserRequest; on
               {t("View details")} <ArrowRight size={14} aria-hidden="true" />
             </button>
           )}
-          <button type="button" className="icon-btn icon-btn--sm" aria-label={t("Withdraw {title}", { title: t(request.title) })} title={t("Withdraw")} onClick={() => onWithdraw(request)}>
+          {!terminal && <button type="button" className="icon-btn icon-btn--sm" aria-label={t("Withdraw {title}", { title: t(request.title) })} title={t("Withdraw")} onClick={() => onWithdraw(request)}>
             <Trash size={15} />
-          </button>
+          </button>}
         </div>
       </div>
       {request.actionRequired && <p className="request__action-detail">{t(request.actionRequired.detail)}</p>}
@@ -110,6 +114,7 @@ function RequestCard({ request, onOpen, onWithdraw }: { request: UserRequest; on
 }
 
 export default function RequestTracker({ requests, onOpen, onWithdraw, onSeedDemo, onClearDemo, onBrowse }: Props) {
+  const { servicePersistence, signedIn } = useCivicData();
   const { t, tp } = useI18n();
   const hasDemo = requests.some((r) => r.demo);
   const needsAction = requests.filter((r) => r.actionRequired).length;
@@ -132,9 +137,13 @@ export default function RequestTracker({ requests, onOpen, onWithdraw, onSeedDem
         ) : null
       }
     >
-      {requests.length === 0 ? (
+      {!signedIn && <p className="fineprint">Sign in with a verified account using Profile to view your saved applications.</p>}
+      {servicePersistence.status === 'loading' && <p role="status">Loading saved applications…</p>}
+      {servicePersistence.error && <p className="field__error" role="alert">{servicePersistence.error} Existing records below may be out of date.</p>}
+      {signedIn && <button type="button" className="link-btn" disabled={servicePersistence.status === 'loading'} onClick={() => void servicePersistence.refresh()}>Refresh saved applications</button>}
+      {requests.length === 0 && ['ready', 'signed_out'].includes(servicePersistence.status) ? (
         <div className="requests-empty">
-          <p className="requests-empty__title">{t("No active requests")}</p>
+          <p className="requests-empty__title">{t(signedIn ? 'No saved requests' : 'Explore CivicOS services')}</p>
           <p className="requests-empty__text">{t("Applications you start in CivicOS are tracked here, with each step and what you need to do next.")}</p>
           <div className="requests-empty__actions">
             <button type="button" className="btn btn--primary btn--sm" onClick={onBrowse}>
@@ -157,7 +166,8 @@ export default function RequestTracker({ requests, onOpen, onWithdraw, onSeedDem
               <RequestCard key={request.id} request={request} onOpen={onOpen} onWithdraw={onWithdraw} />
             ))}
           </div>
-          <p className="fineprint">{t("Status steps are simulated from typical processing times; CivicOS isn't connected to government case systems.")}</p>
+          {servicePersistence.hasMore && <button type="button" className="btn btn--secondary btn--sm" disabled={servicePersistence.status === 'loading'} onClick={() => void servicePersistence.loadMore()}>Load more saved applications</button>}
+          <p className="fineprint">{t("Saved application statuses come from CivicOS prototype actions. Browser-only records retain simulated timelines. CivicOS is not connected to government case systems.")}</p>
         </>
       )}
     </SectionCard>

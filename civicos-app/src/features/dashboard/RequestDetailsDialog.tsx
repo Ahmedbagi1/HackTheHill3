@@ -4,8 +4,15 @@ import { SERVICES_BY_ID } from "../../data/servicesData";
 import { DemoTag } from "../../components/ui/primitives";
 import { useI18n } from "../../i18n/i18nContext";
 import type { UserRequest } from "../../types/dashboard";
+import SavedApplicationDetails from './SavedApplicationDetails';
 
 export default function RequestDetailsDialog({ request, onClose }: { request: UserRequest; onClose: () => void }) {
+  return request.persistence === 'supabase'
+    ? <SavedApplicationDetails id={request.id} onClose={onClose} />
+    : <LocalRequestDetailsDialog request={request} onClose={onClose} />;
+}
+
+function LocalRequestDetailsDialog({ request, onClose }: { request: UserRequest; onClose: () => void }) {
   useDialogBehavior(onClose);
   const { t, tm, formatDate } = useI18n();
   const service = (SERVICES_BY_ID as Record<string, { officialUrl?: string; agency?: string } | undefined>)[request.serviceId];
@@ -63,7 +70,7 @@ export default function RequestDetailsDialog({ request, onClose }: { request: Us
               <dd>{formatDate(request.submittedAt)}</dd>
             </div>
           </dl>
-          <p className="fineprint">{t("Stages are simulated from typical processing times. Follow up with the program using your reference number.")}</p>
+          <p className="fineprint">{t("Browser-only prototype record, not a Supabase submission. Stages are simulated. This reference is only for CivicOS and cannot be used with government programs.")}</p>
         </div>
         <div className="modal__footer">
           {service?.officialUrl ? (

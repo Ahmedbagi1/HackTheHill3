@@ -129,6 +129,10 @@ export default function CitizenHub({
         requests={requests}
         onOpen={onOpenRequest}
         onWithdraw={(r) => {
+          if (r.persistence === 'supabase') {
+            onOpenRequest(r);
+            return;
+          }
           if (window.confirm(t("Withdraw “{title}” from your dashboard?", { title: t(r.title) }))) withdrawRequest(r.id);
         }}
         onSeedDemo={seedDemo}

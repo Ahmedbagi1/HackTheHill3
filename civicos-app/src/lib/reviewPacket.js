@@ -63,7 +63,8 @@ export function buildReviewPacketHtml({ service, steps, formData, referenceId, s
 </header>
 ${sections}
 <h2>${escapeHtml(t("Documents to have ready"))}</h2><ul>${requirements}</ul>
-<div class="note">${escapeHtml(t("Prepared with CivicOS. This packet is a summary for your records and is not an official government document."))}
+<div class="note">${escapeHtml(t("Prepared with CivicOS using test information. This packet is a summary for your records and is not an official government document."))}
+${escapeHtml(t("Nothing was submitted to a government service. Any reference identifies only the internal CivicOS prototype application."))}
 ${escapeHtml(t("Official information: {url}", { url: service.officialUrl }))}</div>
 </body></html>`;
 }

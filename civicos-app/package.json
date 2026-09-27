@@ -9,16 +9,26 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "db:prepare": "node scripts/prepare-database.mjs",
+    "test:db": "node --test supabase/tests/*.test.mjs",
+    "db:prepare-api": "node scripts/prepare-application-api.mjs",
+    "test:persistence": "node --experimental-strip-types --test tests/application-client.test.mjs",
+    "test:persistence-ui": "playwright test",
+    "test:production": "node --test tests/production-build.test.mjs",
+    "test:gemini": "node --test tests/gemini*.test.mjs",
     "i18n:audit": "node scripts/i18n-audit.mjs"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.27.0",
+    "@supabase/supabase-js": "^2.117.2",
     "@google/genai": "^2.24.0",
     "lucide-react": "^1.48.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.63.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",

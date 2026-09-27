@@ -44,15 +44,22 @@ Open **Applications → Applications → CivicOS → Settings**:
 | --- | --- |
 | Application Type | Single Page Application |
 | Application Login URI | Leave blank for the current app-initiated flow |
-| Allowed Callback URLs | `http://localhost:5173` |
-| Allowed Logout URLs | `http://localhost:5173` |
-| Allowed Web Origins | `http://localhost:5173` |
+| Allowed Callback URLs | `http://localhost:5173`, `https://www.civicos.work` |
+| Allowed Logout URLs | `http://localhost:5173`, `https://www.civicos.work` |
+| Allowed Web Origins | `http://localhost:5173`, `https://www.civicos.work` |
 | Refresh Token Rotation → Allow Refresh Token Rotation | Enabled |
 | Rotation Overlap Period | `3` seconds |
 
 Under **Advanced Settings → Grant Types**, ensure **Authorization Code** and
 **Refresh Token** are enabled. If the Token Endpoint Authentication Method setting is
 shown, it must be **None** for this public SPA. Keep OIDC Conformant enabled. Save changes.
+
+Keep both origins in each allowlist. The canonical production origin is
+`https://www.civicos.work`; the hosting provider redirects `https://civicos.work`
+to it before the app loads. There is no `/callback` route to append. Localhost
+remains valid for development. Old tunnel or port 5174 entries, if present in the
+Auth0 dashboard and no longer used by teammates, can be removed there; repository
+changes do not update the dashboard.
 
 Use expiring refresh tokens. For local development, recommended maximum lifetime is
 `2592000` seconds (30 days) and idle lifetime `604800` seconds (7 days). Set these in the
@@ -143,7 +150,8 @@ and [`api.access.deny`](https://auth0.com/docs/actions/reference/post-login/post
    verification status in some dashboard versions). Then ask the user to open the
    link and return to CivicOS → Profile → Sign In.
 5. Keep the application Login URI blank for now. After verifying or resetting a
-   password, manually return to localhost and sign in if Auth0 does not return there.
+   password, manually return to the CivicOS origin you started from and sign in if
+   Auth0 does not return there.
    Do not configure an email redirect to a nonexistent `/callback` route.
 
 Reference: [verification email behavior](https://auth0.com/docs/manage-users/user-accounts/verify-emails)
@@ -273,11 +281,51 @@ The build emits a non-fatal warning for the approximately 627 kB minified JS bun
 Live account creation, email delivery, verified login, token renewal and logout require
 the real tenant settings and a real account; local policy/UI tests do not prove them.
 
-## Production later
+## Production at https://www.civicos.work
 
-Set these same two `VITE_AUTH0_*` values in the deployment's build environment, add the
-exact HTTPS production origin to all three Auth0 allowlists, and rebuild. The SDK's
-callback and logout targets use `window.location.origin`, so no code change is needed
-for another root-hosted origin. Keep localhost entries for development. Hosting under
-a subpath would require explicit callback/base-path changes. Use a real email provider
-and public HTTPS logo/font assets when you publish.
+The login redirect in `src/main.jsx` and logout return URL in
+`src/components/account/AccountDialog.jsx` both use `auth0ReturnTo` from
+`src/lib/auth0.js`, which is `window.location.origin`. Local development therefore
+returns to `http://localhost:5173`, while production returns to
+`https://www.civicos.work`. The production domain belongs in the Auth0 allowlists
+above and the hosting provider's domain settings, not in application redirect code.
+Keep the apex-to-www redirect at the hosting layer.
+
+In the hosting provider's **production build environment**, configure:
+
+| Variable | Exposure | Purpose |
+| --- | --- | --- |
+| `VITE_AUTH0_DOMAIN` | Public | Existing Auth0 tenant hostname, without `https://` |
+| `VITE_AUTH0_CLIENT_ID` | Public | Existing CivicOS SPA Client ID |
+| `VITE_SUPABASE_URL` | Public | Existing Supabase project HTTPS URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Public | Project publishable key (`sb_publishable_...`) |
+
+Use `civicos-app` as the build directory, `npm run build` as the build command,
+and `dist` as the output directory relative to it. Vite substitutes referenced
+`VITE_*` variables at build time; rebuild and redeploy after changing them. The
+ignored `.env.local` supplies local builds and is not uploaded by Git. Never put
+an Auth0 Client Secret, a Supabase secret/service-role key, a database password,
+or a private external API key in a `VITE_*` variable.
+
+The Supabase client in `src/services/applicationRepository.ts` now persists the
+29 catalog forms using the verified Auth0 ID token. The database setup and live
+authenticated submission have passed; see [PERSISTENCE.md](PERSISTENCE.md).
+The Vite configuration exposes only the four named public values. Keep the existing
+Auth0 third-party integration and Supabase-role Action when using the same tenant
+and SPA; changing the CivicOS website origin does not change that identity setup.
+Preserve the verified-email Action and its application metadata as well.
+
+Vite's `server.port: 5173` and `strictPort: true` apply to local development. There
+is no need to put the production hostname in Vite's development-server settings.
+The `/api/tts`, `/api/gemini/*` and `/api/feeds/*` middleware runs only under the current Vite
+dev/preview setup; publishing `dist` alone does not deploy those endpoints.
+Production needs corresponding server routes if those features are required.
+`ELEVENLABS_API_KEY` belongs only in that server's runtime environment.
+
+After the production build and Auth0 allowlists are configured, check sign-in,
+verified-account access, page reload, and sign-out on **both** origins. The browser
+must return to the origin where that flow started. These live checks require an
+account and cannot be established by a successful build alone.
+
+References: [Auth0 React SDK](https://auth0.com/docs/libraries/auth0-react) and
+[Vite environment variables](https://vite.dev/guide/env-and-mode).

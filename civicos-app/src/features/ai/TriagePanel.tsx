@@ -109,7 +109,7 @@ export default function TriagePanel({ state, onClear, onRetry, onStartService, o
             <ServiceCard
               key={service.id}
               service={service}
-              recommendedStep={index + 1}
+              stepNumber={index + 1}
               onStart={onStartService}
               onListen={onListen}
               onExplain={onExplain}

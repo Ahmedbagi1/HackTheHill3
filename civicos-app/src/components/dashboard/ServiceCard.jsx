@@ -1,9 +1,18 @@
-import { ArrowRight, Clock, Volume2 } from "lucide-react";
+import { ArrowRight, Clock, Sparkles, Volume2 } from "lucide-react";
 import TierBadge from "../common/TierBadge";
 import Tx from "../../i18n/Tx";
 import { useI18n } from "../../i18n/i18nContext";
 
-const ServiceCard = ({ service, stepNumber, onStart, onListen }) => {
+/**
+ * @param {{
+ *   service: import('../../lib/directory').CatalogService,
+ *   stepNumber?: number,
+ *   onStart: (service: import('../../lib/directory').CatalogService) => void,
+ *   onListen: (service: import('../../lib/directory').CatalogService) => void,
+ *   onExplain?: (service: import('../../lib/directory').CatalogService) => void
+ * }} props
+ */
+const ServiceCard = ({ service, stepNumber, onStart, onListen, onExplain }) => {
   const { t } = useI18n();
   const Icon = service.icon;
   const tierKey = service.tier.toLowerCase();
@@ -35,6 +44,11 @@ const ServiceCard = ({ service, stepNumber, onStart, onListen }) => {
         {t(service.time)}
       </div>
       <div className="card__footer">
+        {onExplain && (
+          <button type="button" className="btn btn--secondary" onClick={() => onExplain(service)}>
+            <Sparkles size={16} aria-hidden="true" /> {t("AI Explain")}
+          </button>
+        )}
         <button type="button" className="btn btn--primary" onClick={() => onStart(service)}>
           {t("Start application")}
           <ArrowRight size={16} aria-hidden="true" />
