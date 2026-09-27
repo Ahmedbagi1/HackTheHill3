@@ -33,6 +33,7 @@ const BenefitsFinder = lazy(() => import("./components/finder/BenefitsFinder"));
 const DynamicModalWizard = lazy(() => import("./components/wizard/DynamicModalWizard"));
 const ElevenLabsVoiceAssistant = lazy(() => import("./components/voice/ElevenLabsVoiceAssistant"));
 const NewApplicationDialog = lazy(() => import("./features/shell/NewApplicationDialog"));
+const CivicChatDock = lazy(() => import("./features/ai/CivicChatDock"));
 
 /** Anchors that live on the Disruptions & Alerts page. */
 const ALERT_PAGE_ANCHORS = new Set(["waste", "disruptions", "canada-alerts", "updates"]);
@@ -65,7 +66,11 @@ function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const [newAppOpen, setNewAppOpen] = useState(false);
   const [finderOpen, setFinderOpen] = useState(false);
-  const [wizard, setWizard] = useState<{ service: CatalogService; prefill: Record<string, unknown> | null } | null>(null);
+  const [wizard, setWizard] = useState<{
+    service: CatalogService;
+    prefill: Record<string, unknown> | null;
+    prefillSource?: "finder" | "assistant";
+  } | null>(null);
   const [voiceService, setVoiceService] = useState<CatalogService | null>(null);
   const [requestDetail, setRequestDetail] = useState<UserRequest | null>(null);
   const pendingAnchor = useRef<string | null>(null);
@@ -129,6 +134,12 @@ function AppShell() {
     setWizard({ service, prefill });
   }, []);
   const closeWizard = useCallback(() => setWizard(null), []);
+  const startFromAssistant = useCallback((serviceId: string, prefill: Record<string, unknown> | null) => {
+    const service = SERVICES_BY_ID[serviceId];
+    if (!service) return;
+    setVoiceService(null);
+    setWizard({ service, prefill, prefillSource: "assistant" });
+  }, []);
   const openVoice = useCallback((service: CatalogService) => setVoiceService(service), []);
   const closeVoice = useCallback(() => setVoiceService(null), []);
   const openFinder = useCallback(() => {
@@ -274,6 +285,7 @@ function AppShell() {
             key={`wizard-${wizard.service.id}`}
             service={wizard.service}
             prefill={wizard.prefill}
+            prefillSource={wizard.prefillSource}
             onClose={closeWizard}
             onListen={openVoice}
             onSubmitted={civic.submitServiceRequest}
@@ -282,6 +294,8 @@ function AppShell() {
         )}
 
         {requestDetail && <RequestDetailsDialog request={requestDetail} onClose={closeRequestDetail} />}
+
+        <CivicChatDock onStartService={startFromAssistant} onOpenModule={openModule} />
 
         {voiceService && (
           <ElevenLabsVoiceAssistant

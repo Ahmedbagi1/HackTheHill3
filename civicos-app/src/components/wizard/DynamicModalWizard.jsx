@@ -47,7 +47,7 @@ const printPacket = (packetInput) => {
  *   Verification & requirements → Review & summary
  * Answers live in one `formData` object, so Back/Next never lose input.
  */
-const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted, signedIn }) => {
+const DynamicModalWizard = ({ service, prefill, prefillSource = "finder", onClose, onListen, onSubmitted, signedIn }) => {
   const { t } = useI18n();
   const lang = useAnswerLanguage();
   const steps = useMemo(() => buildSteps(service.form), [service]);
@@ -253,7 +253,9 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted, 
               {isPrefilled && step === 0 && (
                 <p className="callout prefill-note">
                   <Sparkles size={16} aria-hidden="true" />
-                  {t("We've filled in answers from your benefits check. Review them before continuing.")}
+                  {prefillSource === "assistant"
+                    ? t("We've started this form from your conversation with the assistant. Review it before continuing.")
+                    : t("We've filled in answers from your benefits check. Review them before continuing.")}
                 </p>
               )}
               <p className="form-section-progress">{t("Step {current} of {total}", { current: step + 1, total: steps.length })}</p>

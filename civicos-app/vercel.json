@@ -3,6 +3,9 @@
   "functions": {
     "api/gemini/*.js": {
       "maxDuration": 35
+    },
+    "api/tts/*.js": {
+      "maxDuration": 30
     }
   }
 }
