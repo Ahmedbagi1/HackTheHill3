@@ -11,6 +11,7 @@
   --line: rgba(226, 232, 240, 0.8);
   --line-soft: #f1f5f9;
   --sidebar-w: 252px;
+  --sidebar-w-collapsed: 64px;
   --utilbar-h: 64px;
   --zoom: 1;
 }
@@ -32,6 +33,7 @@ body {
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   min-height: calc(100vh / var(--zoom));
+  transition: grid-template-columns 0.3s ease;
 }
 
 .shell__main {
@@ -90,6 +92,7 @@ body {
 }
 
 .sidebar__close,
+.sidebar__collapse,
 .sidebar-scrim {
   display: none;
 }
@@ -211,6 +214,84 @@ body {
   gap: 10px;
   padding-top: 14px;
   border-top: 1px solid var(--line-soft);
+}
+
+/* ---------- Collapsed sidebar (desktop icon rail) ---------------------- */
+/* Below 1024px the sidebar is a slide-out drawer instead (see Responsive). */
+@media (min-width: 1024px) {
+  .sidebar__collapse {
+    display: grid;
+    flex-shrink: 0;
+  }
+
+  .shell.is-collapsed {
+    grid-template-columns: var(--sidebar-w-collapsed) minmax(0, 1fr);
+  }
+
+  .sidebar.is-collapsed {
+    padding: 16px 10px;
+    overflow-x: hidden;
+  }
+
+  .sidebar.is-collapsed .sidebar__brand-row {
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 0 8px;
+  }
+
+  .sidebar.is-collapsed .sidebar__name,
+  .sidebar.is-collapsed .sidebar__badge,
+  .sidebar.is-collapsed .side-item__count,
+  .sidebar.is-collapsed .side-item__tag,
+  .sidebar.is-collapsed .side-group__picker,
+  .sidebar.is-collapsed .lang-picker,
+  .sidebar.is-collapsed .a11y-toggle__track {
+    display: none;
+  }
+
+  /* Labels stay in the accessibility tree; hovering shows them as tooltips. */
+  .sidebar.is-collapsed .side-item__label,
+  .sidebar.is-collapsed .a11y-toggle__label,
+  .sidebar.is-collapsed .profile-pill__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* Section titles become thin dividers. */
+  .sidebar.is-collapsed .sidebar__section {
+    height: 1px;
+    margin: 12px 6px;
+    overflow: hidden;
+    background: var(--line-soft);
+    color: transparent;
+  }
+
+  .sidebar.is-collapsed .side-item,
+  .sidebar.is-collapsed .a11y-toggle {
+    justify-content: center;
+    padding: 8px 0;
+  }
+
+  .sidebar.is-collapsed .a11y-toggle[aria-checked="true"] {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  .sidebar.is-collapsed .profile-pill {
+    justify-content: center;
+    padding: 6px 0;
+    border-color: transparent;
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .shell {
+    transition: none;
+  }
 }
 
 /* ---------- Language picker ------------------------------------------ */
@@ -692,26 +773,6 @@ button.metric:hover {
   color: #fff;
 }
 
-.tier-tabs__province {
-  margin-left: auto;
-}
-
-.tier-tabs__province select {
-  height: 40px;
-  padding: 0 30px 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #fff
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
-    no-repeat right 11px center;
-  font: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--slate-800);
-  appearance: none;
-  cursor: pointer;
-}
-
 .page-head {
   margin-bottom: 24px;
 }
@@ -1022,10 +1083,6 @@ button.metric:hover {
 
   .hub-greeting__title {
     font-size: 24px;
-  }
-
-  .tier-tabs__province {
-    margin-left: 0;
   }
 }
 
