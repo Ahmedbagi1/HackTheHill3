@@ -31,6 +31,29 @@ export interface HousingPriorityFlags {
   homeless: boolean;
 }
 
+/** Annual income by source, as asked on the Registry application. */
+export interface HousingIncomeSources {
+  employment: number;
+  employmentInsurance: number;
+  socialAssistance: number;
+  pensions: number;
+  supportPayments: number;
+  other: number;
+}
+
+/** Legal identity and contact details of the applicant. */
+export interface HousingApplicant {
+  legalSurname: string;
+  legalGivenNames: string;
+  dateOfBirth: string;
+  email: string;
+  phone: string;
+  homeAddress: string;
+  mailingAddress: string | null;
+  residencyProof: string;
+  householdMembers: string;
+}
+
 export interface HousingIntake {
   serviceArea: ServiceAreaId | "other";
   applicantAge: number;
@@ -50,6 +73,9 @@ export interface HousingIntake {
   currentMonthlyRent: number | null;
   accessibilityNeeds: boolean;
   priority: HousingPriorityFlags;
+  /** Present for intakes completed after the legal-identity alignment. */
+  applicant?: HousingApplicant;
+  incomeSources?: HousingIncomeSources;
 }
 
 export type EligibilityCheckStatus = "pass" | "fail" | "review";

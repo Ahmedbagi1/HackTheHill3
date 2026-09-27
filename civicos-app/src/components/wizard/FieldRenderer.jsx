@@ -36,6 +36,15 @@ const FieldRenderer = ({ field, value, error, formData, onChange }) => {
 
   /* Display-only ------------------------------------------------------ */
 
+  if (field.type === "info" && field.variant === "heading") {
+    return (
+      <div className="field field--full field-group-heading">
+        <Tx as="p" className="field-group-heading__title" text={field.label} />
+        <FieldHint id={hintId} text={field.hint} />
+      </div>
+    );
+  }
+
   if (field.type === "info") {
     return (
       <p className="field field--full callout">

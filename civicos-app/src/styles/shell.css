@@ -80,17 +80,6 @@ body {
   letter-spacing: -0.02em;
 }
 
-.sidebar__badge {
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  background: var(--primary-soft);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--primary);
-}
-
 .sidebar__close,
 .sidebar__collapse,
 .sidebar-scrim {
@@ -240,7 +229,6 @@ body {
   }
 
   .sidebar.is-collapsed .sidebar__name,
-  .sidebar.is-collapsed .sidebar__badge,
   .sidebar.is-collapsed .side-item__count,
   .sidebar.is-collapsed .side-item__tag,
   .sidebar.is-collapsed .side-group__picker,
@@ -1106,4 +1094,79 @@ button.metric:hover {
   margin-top: 10px;
   font-size: 12.5px;
   color: var(--slate-600);
+}
+
+/* ---------- Contact us dialog ------------------------------------------ */
+.contact-dialog__emergency {
+  margin-top: 0;
+}
+
+.contact-dialog__intro {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.contact-dialog__heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 18px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.contact-dialog__list,
+.contact-dialog__links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contact-dialog__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.contact-dialog__name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.contact-dialog__covers {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.contact-dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.contact-dialog__actions a,
+.contact-dialog__links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.contact-dialog__phone {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.contact-dialog__links li {
+  padding: 6px 0;
+  font-size: 14px;
 }

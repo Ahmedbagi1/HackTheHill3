@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Baby, Building2, HeartPulse, House, Landmark, LayoutGrid, MapPinned, PanelLeftClose, PanelLeftOpen, PiggyBank, Siren, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Baby, Building2, HeartPulse, House, Landmark, LayoutGrid, Mail, MapPinned, PanelLeftClose, PanelLeftOpen, PiggyBank, Siren, X } from "lucide-react";
 import AccountButton from "../../components/account/AccountButton";
 import { PROVINCES } from "../../data/provinces";
 import { useI18n } from "../../i18n/i18nContext";
@@ -7,6 +7,7 @@ import type { ModuleRoute, Route } from "../../state/useHashRoute";
 import type { ProvinceCode } from "../../types/dashboard";
 import type { TierFilter } from "../../types/directory";
 import AccessibilityToggle from "./AccessibilityToggle";
+import ContactDialog from "./ContactDialog";
 import LanguagePicker from "./LanguagePicker";
 
 interface Props {
@@ -86,6 +87,7 @@ export default function Sidebar({
   const { t } = useI18n();
   const onHub = route === "dashboard";
   const tierActive = (value: TierFilter) => onHub && tier === value;
+  const [contactOpen, setContactOpen] = useState(false);
 
   return (
     <>
@@ -105,7 +107,6 @@ export default function Sidebar({
                 <Landmark size={18} />
               </span>
               <span className="sidebar__name">CivicOS</span>
-              <span className="sidebar__badge">{t("Citizen Hub")}</span>
             </a>
             <button type="button" className="icon-btn sidebar__close" aria-label={t("Close menu")} onClick={onClose}>
               <X size={18} />
@@ -185,8 +186,10 @@ export default function Sidebar({
           <LanguagePicker variant="sidebar" />
           <AccessibilityToggle />
           <AccountButton variant="pill" />
+          <NavItem collapsed={collapsed} icon={<Mail size={18} />} label={t("Contact us")} active={contactOpen} onClick={() => setContactOpen(true)} />
         </div>
       </aside>
+      {contactOpen && <ContactDialog onClose={() => setContactOpen(false)} />}
     </>
   );
 }

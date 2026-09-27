@@ -6,6 +6,7 @@ import {
   CircleCheck,
   Download,
   ExternalLink,
+  FileBraces,
   Printer,
   ShieldCheck,
   Sparkles,
@@ -16,9 +17,10 @@ import TierBadge from "../common/TierBadge";
 import FieldRenderer from "./FieldRenderer";
 import ReviewSummary from "./ReviewSummary";
 import StepIndicator from "./StepIndicator";
+import OfficialSubmissionNotice from "./OfficialSubmissionNotice";
 import { buildSteps } from "../../data/servicesData";
 import { DISPLAY_ONLY_TYPES, buildInitialFormData, validateFields, visibleFields } from "../../lib/validation";
-import { buildReviewPacketHtml, downloadReviewPacket } from "../../lib/reviewPacket";
+import { buildReviewPacketHtml, downloadReviewPacket, downloadReviewPacketJson } from "../../lib/reviewPacket";
 import { useDialogBehavior } from "../../hooks/useDialogBehavior";
 import { useI18n } from "../../i18n/i18nContext";
 import { useAnswerLanguage } from "../../i18n/useAnswerLanguage";
@@ -40,8 +42,9 @@ const printPacket = (packetInput) => {
 };
 
 /**
- * Three-step application wizard driven entirely by the service's schema:
- *   1. Primary details   2. Verification & requirements   3. Review & summary
+ * Application wizard driven entirely by the service's schema:
+ *   Primary details → Applicant & contact (when the form has one) →
+ *   Verification & requirements → Review & summary
  * Answers live in one `formData` object, so Back/Next never lose input.
  */
 const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted, signedIn }) => {
@@ -96,10 +99,12 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted, 
     setStep(index);
   };
 
+  // Saved answers are the server-normalized copy; drafts use the live form.
+  const packetFormData = submission ? { ...submission.payload.answers, consent: true } : formData;
   const packetInput = (referenceId, submittedAt) => ({
     service,
     steps,
-    formData: submission ? { ...submission.payload.answers, consent: true } : formData,
+    formData: packetFormData,
     referenceId,
     submittedAt,
     lang,
@@ -208,6 +213,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted, 
                 {t("Nothing was sent to a government service.")}
               </p>
               <span className="success__ref">{submission.referenceId}</span>
+              <OfficialSubmissionNotice service={service} formData={packetFormData} complete />
               <div className="success__actions">
                 <button
                   type="button"
@@ -222,6 +228,13 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted, 
                   onClick={() => printPacket(packetInput(submission.referenceId, submission.submittedAt))}
                 >
                   <Printer size={16} aria-hidden="true" /> {t("Print")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  onClick={() => downloadReviewPacketJson(packetInput(submission.referenceId, submission.submittedAt))}
+                >
+                  <FileBraces size={16} aria-hidden="true" /> {t("Download data (JSON)")}
                 </button>
               </div>
               <a className="success__link" href={service.officialUrl} target="_blank" rel="noreferrer">
@@ -262,6 +275,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted, 
                 </div>
               ) : (
                 <>
+                  <OfficialSubmissionNotice service={service} formData={formData} />
                   <ReviewSummary
                     steps={answerSteps}
                     formData={formData}

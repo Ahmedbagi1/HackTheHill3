@@ -89,7 +89,7 @@ export const validateFields = (fields, formData) => {
 
 export const buildInitialFormData = (form) => {
   const data = { consent: false };
-  for (const field of [...form.primary.fields, ...form.verification.fields]) {
+  for (const field of [form.primary, form.applicant, form.verification].filter(Boolean).flatMap((section) => section.fields)) {
     if (!DISPLAY_ONLY_TYPES.has(field.type)) data[field.name] = emptyValueFor(field);
   }
   return data;
