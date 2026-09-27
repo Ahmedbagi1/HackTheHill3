@@ -1,4 +1,5 @@
 import type { Catalog } from "../../translator";
+import assistant from "./assistant";
 import autism from "./autism";
 import data from "./data";
 import doctor from "./doctor";
@@ -26,6 +27,7 @@ const fr: Catalog = {
   ...doctor,
   ...autism,
   ...intake,
+  ...assistant,
   ...ui,
 };
 

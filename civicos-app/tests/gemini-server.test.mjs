@@ -161,3 +161,63 @@ test('real Vercel entrypoint works over local HTTP and passes runtime key only t
     if (previous === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = previous;
   }
 });
+
+test('triage passes chat history as citizen data and constrains wizard branch options', async () => {
+  let seen;
+  const answer = { guidance: 'File a T2.', urgency: 'High', recommendedServiceIds: ['ltb'], actionPlan: [{ title: 'Start a T2.', serviceId: 'ltb', option: 'T2' }] };
+  const handler = createGeminiHandler({ apiKey: secret, generateContent: async (input) => { seen = input; return { text: JSON.stringify(answer) }; } });
+  const body = JSON.stringify({
+    query: 'They also shut off the water.',
+    history: ['My landlord will not fix the heat.', 42],
+    catalog: [{ id: 'ltb', title: 'Landlord and Tenant Board', options: [{ value: 'T2', label: 'Tenant rights' }, { value: 'T6', label: 'Maintenance' }, { value: 'bad value!', label: 'x' }] }],
+  });
+  const res = await request(handler, { path: '/api/gemini/triage', body });
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body, answer);
+  assert.match(seen.contents, /<citizen_input>\n<earlier_messages>\nMy landlord will not fix the heat\.\n<\/earlier_messages>\nThey also shut off the water\.\n<\/citizen_input>/);
+  assert.match(seen.contents, /\[options: T2 = Tenant rights; T6 = Maintenance\]/);
+  // Ids and options are enforced after generation; enums in the schema make Gemini time out.
+  assert.equal(seen.config.responseSchema.properties.recommendedServiceIds.items.enum, undefined);
+
+  const invented = createGeminiHandler({ apiKey: secret, generateContent: async () => ({ text: JSON.stringify({
+    ...answer,
+    recommendedServiceIds: ['ltb', 'invented', 'ltb'],
+    actionPlan: [{ title: 'Wrong branch', serviceId: 'ltb', option: 'T9' }, { title: 'Unknown service', serviceId: 'invented', option: 'T2' }],
+  }) }) });
+  assert.deepEqual((await request(invented, { path: '/api/gemini/triage', body })).body, {
+    ...answer,
+    recommendedServiceIds: ['ltb'],
+    actionPlan: [{ title: 'Wrong branch', serviceId: 'ltb' }, { title: 'Unknown service' }],
+  });
+});
+
+test('a slow or failed Gemini call is hedged by one identical call; the first answer wins', async () => {
+  const never = (input) => new Promise((_, reject) => input.config.abortSignal.addEventListener('abort', () => reject(new Error('aborted'))));
+  let calls = 0; const aborted = [];
+  const slowFirst = configured({ hedgeDelayMs: 20, generateContent: async (input) => {
+    calls++;
+    if (calls === 1) { input.config.abortSignal.addEventListener('abort', () => aborted.push(1)); return never(input); }
+    return { text: JSON.stringify(summary) };
+  } });
+  assert.equal((await request(slowFirst)).status, 200);
+  assert.equal(calls, 2);
+  assert.deepEqual(aborted, [1], 'the losing call is cancelled');
+
+  calls = 0;
+  const failsOnce = configured({ hedgeDelayMs: 10_000, generateContent: async () => {
+    if (++calls === 1) throw new ApiError({ message: 'unavailable', status: 503 });
+    return { text: JSON.stringify(summary) };
+  } });
+  assert.equal((await request(failsOnce)).status, 200);
+  assert.equal(calls, 2);
+
+  calls = 0;
+  const quota = configured({ hedgeDelayMs: 10_000, generateContent: async () => { calls++; throw new ApiError({ message: 'quota', status: 429 }); } });
+  assert.equal((await request(quota)).status, 429);
+  assert.equal(calls, 1, 'client errors are not retried');
+
+  calls = 0;
+  const bothSlow = configured({ hedgeDelayMs: 10, timeoutMs: 60, generateContent: (input) => { calls++; return never(input); } });
+  assert.equal((await request(bothSlow)).status, 504);
+  assert.equal(calls, 2);
+});

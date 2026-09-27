@@ -7,6 +7,12 @@ import { browserSpeechAvailable, getVoiceStatus, synthesizeSpeech } from "../../
  *
  * Exposes an AnalyserNode for live ElevenLabs audio so the waveform reflects
  * the real signal; browser speech can't be analysed, so the waveform animates.
+ *
+ * Failure handling: every ElevenLabs failure is logged and surfaced. Audio is
+ * routed through the analyser only when its AudioContext is running (a
+ * suspended context would mute playback), blocked autoplay waits for another
+ * press instead of failing, and decode or network errors fall back to the
+ * browser voice.
  */
 export function useSpeechPlayer({ text, cacheKey, lang = "en-CA" }) {
   const [status, setStatus] = useState("idle"); // idle | loading | playing | paused | ended | error
@@ -19,6 +25,7 @@ export function useSpeechPlayer({ text, cacheKey, lang = "en-CA" }) {
   const audioContextRef = useRef(null);
   const utteranceRef = useRef(null);
   const abortRef = useRef(null);
+  const fallbackRef = useRef(null);
 
   // Detect the mode up front so the UI can label it before playback.
   useEffect(() => {
@@ -46,7 +53,9 @@ export function useSpeechPlayer({ text, cacheKey, lang = "en-CA" }) {
     [stopAll],
   );
 
-  const ensureAudioGraph = () => {
+  // Must start inside the click handler: browsers only let a user gesture
+  // resume an AudioContext.
+  const ensureAudioGraph = async () => {
     if (audioRef.current) return audioRef.current;
 
     const audio = new Audio();
@@ -58,19 +67,35 @@ export function useSpeechPlayer({ text, cacheKey, lang = "en-CA" }) {
       setProgress(1);
       setStatus("ended");
     });
+    audio.addEventListener("error", () => {
+      if (!audio.getAttribute("src")) return;
+      console.error("[voice] ElevenLabs audio could not be decoded or loaded.", audio.error);
+      fallbackRef.current?.("The ElevenLabs audio couldn't be played. Using the browser voice instead.");
+    });
     audioRef.current = audio;
 
     const AudioContextClass = window.AudioContext ?? window.webkitAudioContext;
     if (AudioContextClass) {
-      const context = new AudioContextClass();
-      const source = context.createMediaElementSource(audio);
-      const node = context.createAnalyser();
-      node.fftSize = 128;
-      node.smoothingTimeConstant = 0.75;
-      source.connect(node);
-      node.connect(context.destination);
-      audioContextRef.current = context;
-      setAnalyser(node);
+      try {
+        const context = new AudioContextClass();
+        if (context.state !== "running") await context.resume().catch(() => {});
+        if (context.state === "running") {
+          const source = context.createMediaElementSource(audio);
+          const node = context.createAnalyser();
+          node.fftSize = 128;
+          node.smoothingTimeConstant = 0.75;
+          source.connect(node);
+          node.connect(context.destination);
+          audioContextRef.current = context;
+          setAnalyser(node);
+        } else {
+          // Play straight from the element; the waveform animates instead.
+          console.warn("[voice] AudioContext is suspended; playing without the live waveform.");
+          context.close().catch(() => {});
+        }
+      } catch (err) {
+        console.warn("[voice] Live waveform unavailable.", err);
+      }
     }
     return audio;
   };
@@ -120,20 +145,55 @@ export function useSpeechPlayer({ text, cacheKey, lang = "en-CA" }) {
     utterances.forEach((utterance) => synth.speak(utterance));
   };
 
+  const fallBackToBrowser = (message) => {
+    audioRef.current?.pause();
+    setError(message);
+    speakWithBrowser();
+  };
+  // The audio element's error listener is attached once; keep it pointed at the latest closure.
+  useEffect(() => {
+    fallbackRef.current = fallBackToBrowser;
+  });
+
+  const startElement = async (audio) => {
+    try {
+      await audioContextRef.current?.resume();
+      await audio.play();
+      setStatus("playing");
+    } catch (err) {
+      if (err.name === "NotAllowedError") {
+        // Synthesis outlived the click's permission to play. The audio is
+        // loaded; one more press starts it.
+        console.warn("[voice] Autoplay was blocked; waiting for another press.");
+        setMode("elevenlabs");
+        setStatus("paused");
+        setError("Your browser paused the audio. Press play to start it.");
+        return;
+      }
+      throw err;
+    }
+  };
+
   const play = async () => {
     setError(null);
 
     if (status === "paused") {
-      if (mode === "elevenlabs") {
-        await audioContextRef.current?.resume();
-        await audioRef.current.play();
+      if (mode === "elevenlabs" && audioRef.current) {
+        try {
+          await startElement(audioRef.current);
+        } catch (err) {
+          console.error("[voice] ElevenLabs playback failed.", err);
+          fallBackToBrowser("The ElevenLabs audio couldn't be played. Using the browser voice instead.");
+        }
       } else {
         window.speechSynthesis.resume();
+        setStatus("playing");
       }
-      setStatus("playing");
       return;
     }
 
+    // Start the audio graph before awaiting anything, while the click still counts.
+    const audioReady = mode === "browser" ? null : ensureAudioGraph();
     const voice = await getVoiceStatus();
     if (!voice.enabled) {
       speakWithBrowser();
@@ -146,19 +206,17 @@ export function useSpeechPlayer({ text, cacheKey, lang = "en-CA" }) {
     abortRef.current = controller;
 
     try {
-      const audio = ensureAudioGraph();
-      await audioContextRef.current?.resume();
+      const audio = await (audioReady ?? ensureAudioGraph());
       const url = await synthesizeSpeech(text, { cacheKey, signal: controller.signal });
       if (audio.src !== url) audio.src = url;
       audio.currentTime = 0;
       setMode("elevenlabs");
-      await audio.play();
-      setStatus("playing");
+      await startElement(audio);
     } catch (err) {
       if (err.name === "AbortError") return;
+      console.error("[voice] ElevenLabs unavailable; using the browser voice.", err);
       // Keep the citizen informed but still deliver the explanation.
-      setError(`ElevenLabs unavailable (${err.message}). Using the browser voice instead.`);
-      speakWithBrowser();
+      fallBackToBrowser(`ElevenLabs unavailable (${err.message}). Using the browser voice instead.`);
     }
   };
 
