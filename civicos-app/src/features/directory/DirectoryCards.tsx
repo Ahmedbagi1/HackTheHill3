@@ -1,11 +1,15 @@
 import { ArrowRight, Baby, ExternalLink, HeartPulse, House, Landmark, Sparkles } from "lucide-react";
+import TierBadge from "../../components/common/TierBadge";
 import type { ModuleEntry } from "../../data/categories";
+import { useI18n } from "../../i18n/i18nContext";
+import Tx from "../../i18n/Tx";
 import type { ProvincialPortal } from "../../types/directory";
 
 const MODULE_ICONS = { housing: House, doctor: HeartPulse, autism: Baby } as const;
 
 /** Guided CivicOS program with its own intake, eligibility logic and tracking. */
 export function ModuleCard({ module, onOpen }: { module: ModuleEntry; onOpen: (id: ModuleEntry["id"]) => void }) {
+  const { t } = useI18n();
   const Icon = MODULE_ICONS[module.id];
   return (
     <article className="card card--module" aria-labelledby={`card-${module.id}`}>
@@ -15,21 +19,19 @@ export function ModuleCard({ module, onOpen }: { module: ModuleEntry; onOpen: (i
         </span>
         <div className="card__badges">
           <span className="badge badge--feature">
-            <Sparkles size={11} aria-hidden="true" /> Guided program
+            <Sparkles size={11} aria-hidden="true" /> {t("Guided program")}
           </span>
-          <span className="badge badge--provincial">Provincial</span>
+          <TierBadge tier="Provincial" />
         </div>
       </div>
       <div className="card__body">
-        <h3 id={`card-${module.id}`} className="card__title">
-          {module.title}
-        </h3>
-        <p className="card__agency">Government of Ontario</p>
-        <p className="card__summary">{module.summary}</p>
+        <Tx as="h4" id={`card-${module.id}`} className="card__title" text={module.title} />
+        <p className="card__agency">{t("Government of Ontario")}</p>
+        <Tx as="p" className="card__summary" text={module.summary} />
       </div>
-      <div className="card__actions card__actions--stack">
+      <div className="card__footer">
         <button type="button" className="btn btn--primary" onClick={() => onOpen(module.id)}>
-          Open program
+          {t("Open program")}
           <ArrowRight size={16} aria-hidden="true" />
         </button>
       </div>
@@ -39,6 +41,7 @@ export function ModuleCard({ module, onOpen }: { module: ModuleEntry; onOpen: (i
 
 /** Official service in a province or territory CivicOS doesn't process applications for. */
 export function PortalCard({ portal }: { portal: ProvincialPortal }) {
+  const { t } = useI18n();
   return (
     <article className="card card--portal" aria-labelledby={`card-${portal.id}`}>
       <div className="card__head">
@@ -47,21 +50,19 @@ export function PortalCard({ portal }: { portal: ProvincialPortal }) {
         </span>
         <div className="card__badges">
           <span className="badge badge--neutral">{portal.province}</span>
-          <span className="badge badge--provincial">Provincial</span>
+          <TierBadge tier="Provincial" />
         </div>
       </div>
       <div className="card__body">
-        <h3 id={`card-${portal.id}`} className="card__title">
-          {portal.title}
-        </h3>
-        <p className="card__agency">{portal.agency}</p>
-        <p className="card__summary">{portal.summary}</p>
+        <Tx as="h4" id={`card-${portal.id}`} className="card__title" text={portal.title} />
+        <Tx as="p" className="card__agency" text={portal.agency} />
+        <Tx as="p" className="card__summary" text={portal.summary} />
       </div>
-      <div className="card__actions card__actions--stack">
+      <div className="card__footer">
         <a className="btn btn--primary" href={portal.url} target="_blank" rel="noreferrer">
-          Visit official site
+          {t("Visit official site")}
           <ExternalLink size={15} aria-hidden="true" />
-          <span className="sr-only">(opens in a new tab)</span>
+          <span className="sr-only">{t("(opens in a new tab)")}</span>
         </a>
       </div>
     </article>

@@ -1,17 +1,17 @@
-import { formatWhen } from "./time";
 import type { RegionalAlert } from "../types/alerts";
 
+type Translate = (text: string, params?: Record<string, string | number>) => string;
+
 /** Plain-language timing: when it ends, when service should be back, or why there's no estimate. */
-export function resolutionText(alert: RegionalAlert, now = new Date()): string {
+export function resolutionText(alert: RegionalAlert, t: Translate, formatWhen: (iso: string) => string, now = new Date()): string {
   const { resolution, category, startsAt } = alert;
-  if (resolution.kind === "ongoing" || !resolution.at) return resolution.note ?? "No estimate yet";
+  if (resolution.kind === "ongoing" || !resolution.at) return t(resolution.note ?? "No estimate yet");
 
   const at = Date.parse(resolution.at);
-  if (at < now.getTime()) return "Past its estimated time; awaiting an update";
-  if (startsAt && Date.parse(startsAt) > now.getTime())
-    return `Scheduled ${formatWhen(startsAt, now)} to ${formatWhen(resolution.at, now)}`;
-  if (resolution.kind === "ends") return `Expected to end ${formatWhen(resolution.at, now)}`;
+  if (at < now.getTime()) return t("Past its estimated time; awaiting an update");
+  if (startsAt && Date.parse(startsAt) > now.getTime()) return t("Scheduled {start} to {end}", { start: formatWhen(startsAt), end: formatWhen(resolution.at) });
+  if (resolution.kind === "ends") return t("Expected to end {time}", { time: formatWhen(resolution.at) });
   if (category === "power" || category === "service-outage" || category === "maintenance")
-    return `Estimated restoration ${formatWhen(resolution.at, now)}`;
-  return `Expected back to normal ${formatWhen(resolution.at, now)}`;
+    return t("Estimated restoration {time}", { time: formatWhen(resolution.at) });
+  return t("Expected back to normal {time}", { time: formatWhen(resolution.at) });
 }

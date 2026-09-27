@@ -77,7 +77,10 @@ interface EcccProperties {
   alert_code?: string;
   alert_type?: string;
   alert_name_en?: string;
+  alert_name_fr?: string;
   alert_text_en?: string;
+  alert_text_fr?: string;
+  feature_name_fr?: string;
   publication_datetime?: string;
   expiration_datetime?: string;
   event_end_datetime?: string;
@@ -102,7 +105,7 @@ export function mapEcccAlerts(payload: unknown, now = Date.now()): RegionalAlert
   const features = ((payload as { features?: Array<{ properties?: EcccProperties }> })?.features ?? []).map(
     (f) => f.properties ?? {},
   );
-  const groups = new Map<string, { props: EcccProperties; areas: string[] }>();
+  const groups = new Map<string, { props: EcccProperties; areas: string[]; areasFr: string[] }>();
 
   for (const p of features) {
     const province = p.province as ProvinceCode;
@@ -111,17 +114,25 @@ export function mapEcccAlerts(payload: unknown, now = Date.now()): RegionalAlert
     if (p.expiration_datetime && Date.parse(p.expiration_datetime) < now) continue;
 
     const key = `${province}|${p.alert_code}|${p.alert_text_en ?? ""}`;
-    const group = groups.get(key) ?? { props: p, areas: [] };
-    if (p.feature_name_en && !group.areas.includes(p.feature_name_en)) group.areas.push(p.feature_name_en);
+    const group = groups.get(key) ?? { props: p, areas: [], areasFr: [] };
+    if (p.feature_name_en && !group.areas.includes(p.feature_name_en)) {
+      group.areas.push(p.feature_name_en);
+      group.areasFr.push(p.feature_name_fr ?? p.feature_name_en);
+    }
     groups.set(key, group);
   }
 
-  return [...groups.values()].map(({ props: p, areas }) => {
+  const areaText = (names: string[], more: (n: number) => string) =>
+    names.length > 3 ? `${names.slice(0, 2).join("; ")} ${more(names.length - 2)}` : names.join("; ");
+  const firstParagraph = (text: string | undefined) => (text ?? "").split(/\n\s*\n/)[0]?.trim() ?? "";
+
+  return [...groups.values()].map(({ props: p, areas, areasFr }) => {
     const end = validIso(p.event_end_datetime);
     const resolution: AlertResolution = end
       ? { kind: "ends", at: end }
       : { kind: "ongoing", note: "In effect until Environment Canada ends it" };
-    const summary = (p.alert_text_en ?? "").split(/\n\s*\n/)[0]?.trim() ?? "";
+    const summary = firstParagraph(p.alert_text_en);
+    const summaryFr = firstParagraph(p.alert_text_fr);
     return {
       id: `eccc-${p.province}-${p.alert_code}-${p.feature_id ?? areas[0] ?? ""}`,
       jurisdiction: p.province as ProvinceCode,
@@ -131,10 +142,18 @@ export function mapEcccAlerts(payload: unknown, now = Date.now()): RegionalAlert
       severity: ecccSeverity(p),
       title: sentenceCase(p.alert_name_en ?? "Weather alert"),
       detail: clip(summary),
-      area: areas.length > 3 ? `${areas.slice(0, 2).join("; ")} and ${areas.length - 2} more areas` : areas.join("; "),
+      area: areaText(areas, (n) => `and ${n} more areas`),
       updatedAt: validIso(p.publication_datetime),
       resolution,
       sourceUrl: ECCC_PUBLIC_URL,
+      translations: {
+        fr: {
+          title: p.alert_name_fr ? sentenceCase(p.alert_name_fr) : undefined,
+          detail: summaryFr ? clip(summaryFr) : undefined,
+          area: areaText(areasFr, (n) => `et ${n} autres secteurs`),
+        },
+      },
+      sourceText: ["detail", "area"],
     };
   });
 }
@@ -190,6 +209,7 @@ export function mapDriveBcEvents(payload: unknown, now = Date.now(), limit = 25)
           updatedAt: validIso(e.updated),
           resolution: endsAt ? { kind: "ends", at: endsAt } : { kind: "ongoing", note: "No end time posted" },
           sourceUrl: DRIVEBC_PUBLIC_URL,
+          sourceText: ["title", "detail", "area"],
         },
       ];
     })
@@ -237,12 +257,16 @@ export function mapHydroQuebec(payload: unknown, now = Date.now()): RegionalAler
       category: planned ? "maintenance" : "power",
       severity: planned ? "moderate" : powerSeverity(customers),
       title: planned
-        ? `Planned maintenance: ${n} interruption${n === 1 ? "" : "s"} in progress`
-        : `${n} power outage${n === 1 ? "" : "s"} across Quebec`,
+        ? n === 1
+          ? "Planned maintenance: 1 interruption in progress"
+          : `Planned maintenance: ${n} interruptions in progress`
+        : n === 1
+          ? "1 power outage across Quebec"
+          : `${n} power outages across Quebec`,
       detail: [
-        `${customers.toLocaleString("en-CA")} customer${customers === 1 ? "" : "s"} without power.`,
+        customers === 1 ? "1 customer without power." : `${customers.toLocaleString("en-CA")} customers without power.`,
         n > 1 ? `Largest affects ${largest.toLocaleString("en-CA")}.` : "",
-        scheduled > 0 ? `${scheduled} more planned interruption${scheduled === 1 ? "" : "s"} scheduled.` : "",
+        scheduled === 1 ? "1 more planned interruption scheduled." : scheduled > 1 ? `${scheduled} more planned interruptions scheduled.` : "",
       ]
         .filter(Boolean)
         .join(" "),
@@ -300,7 +324,7 @@ export function mapBcHydro(payload: unknown, limit = 10): RegionalAlert[] {
         severity: planned ? ("moderate" as const) : powerSeverity(customers),
         title: `${planned ? "Planned power interruption" : "Power outage"}${o.municipality ? ` in ${o.municipality}` : ""}`,
         detail: [
-          `${customers.toLocaleString("en-CA")} customer${customers === 1 ? "" : "s"} affected.`,
+          customers === 1 ? "1 customer affected." : `${customers.toLocaleString("en-CA")} customers affected.`,
           o.cause ? `Cause: ${o.cause}.` : "",
         ]
           .filter(Boolean)
@@ -312,6 +336,7 @@ export function mapBcHydro(payload: unknown, limit = 10): RegionalAlert[] {
           ? { kind: "estimate" as const, at: etr }
           : { kind: "ongoing" as const, note: o.crewStatusDescription || "No restoration estimate yet" },
         sourceUrl: BC_HYDRO_PUBLIC_URL,
+        sourceText: ["area" as const],
       };
     });
 }

@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { PATTERNS, checks, date, number, radio, select, text } from "../../data/fieldBuilders";
 import { useCivicData } from "../../state/civicDataStore";
-import { shortDate } from "../../lib/time";
+import { useI18n } from "../../i18n/i18nContext";
+import Tx from "../../i18n/Tx";
 import { DemoTag, Notice, Pill, SectionCard } from "../../components/ui/primitives";
 import ModuleShell from "../shared/ModuleShell";
 import IntakeStepper, { type IntakeStep } from "../shared/IntakeStepper";
@@ -123,76 +124,80 @@ function toIntake(v: Record<string, unknown>): PatientIntake {
 }
 
 const STATUS_PILL = {
-  accepting: <Pill tone="success">Accepting patients</Pill>,
-  waitlist: <Pill tone="warning">Waitlist</Pill>,
-  closed: <Pill tone="neutral">Closed</Pill>,
-};
+  accepting: { tone: "success", label: "Accepting patients" },
+  waitlist: { tone: "warning", label: "Waitlist" },
+  closed: { tone: "neutral", label: "Closed" },
+} as const;
 
 function ScoreRing({ score }: { score: number }) {
+  const { t } = useI18n();
   return (
-    <span className="score" style={{ ["--score" as string]: score }} role="img" aria-label={`Match score ${score} out of 100`}>
+    <span className="score" style={{ ["--score" as string]: score }} role="img" aria-label={t("Match score {score} out of 100", { score })}>
       <span>{score}</span>
     </span>
   );
 }
 
 function MatchCard({ match, onChoose, chosen }: { match: ClinicMatch; onChoose?: () => void; chosen?: boolean }) {
+  const { t, formatNumber } = useI18n();
   const c = match.clinic;
+  const status = STATUS_PILL[c.acceptingStatus];
   return (
     <article className={`match${chosen ? " match--chosen" : ""}`}>
       <ScoreRing score={match.score} />
       <div className="match__body">
         <div className="match__head">
           <h3 className="match__title">{c.name}</h3>
-          {STATUS_PILL[c.acceptingStatus]}
+          <Pill tone={status.tone}>{t(status.label)}</Pill>
         </div>
         <p className="match__meta">
-          <MapPin size={12} aria-hidden="true" /> {c.neighbourhood} · {match.distanceKm.toFixed(1)} km
+          <MapPin size={12} aria-hidden="true" /> {c.neighbourhood} ·{" "}
+          {t("{distance} km", { distance: formatNumber(match.distanceKm, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}
           <span aria-hidden="true">·</span>
           <Stethoscope size={12} aria-hidden="true" />{" "}
-          {c.providerType === "team" ? "Team-based care" : c.providerType === "nurse-practitioner" ? "Nurse practitioners" : "Family physicians"}
+          {t(c.providerType === "team" ? "Team-based care" : c.providerType === "nurse-practitioner" ? "Nurse practitioners" : "Family physicians")}
         </p>
-        <ul className="match__tags" aria-label="Clinic features">
+        <ul className="match__tags" aria-label={t("Clinic features")}>
           <li>
-            <Languages size={12} aria-hidden="true" /> {c.languages.join(", ")}
+            <Languages size={12} aria-hidden="true" /> {c.languages.map((l) => t(l)).join(", ")}
           </li>
           {c.wheelchairAccessible && (
             <li>
-              <Accessibility size={12} aria-hidden="true" /> Accessible
+              <Accessibility size={12} aria-hidden="true" /> {t("Accessible")}
             </li>
           )}
           {c.eveningHours && (
             <li>
-              <MoonStar size={12} aria-hidden="true" /> Evenings
+              <MoonStar size={12} aria-hidden="true" /> {t("Evenings")}
             </li>
           )}
           {c.virtualCare && (
             <li>
-              <Video size={12} aria-hidden="true" /> Virtual
+              <Video size={12} aria-hidden="true" /> {t("Virtual")}
             </li>
           )}
         </ul>
         <ul className="match__reasons">
           {match.reasons.map((r) => (
             <li key={r} className="reason reason--good">
-              <CircleCheck size={13} aria-hidden="true" /> {r}
+              <CircleCheck size={13} aria-hidden="true" /> {t(r)}
             </li>
           ))}
           {match.gaps.map((g) => (
             <li key={g} className="reason reason--gap">
-              <TriangleAlert size={13} aria-hidden="true" /> {g}
+              <TriangleAlert size={13} aria-hidden="true" /> {t(g)}
             </li>
           ))}
         </ul>
       </div>
       <div className="match__side">
         <p className="match__wait">
-          <Clock size={13} aria-hidden="true" /> ~{match.estimatedWaitWeeks} wk
+          <Clock size={13} aria-hidden="true" /> {t("~{weeks} wk", { weeks: match.estimatedWaitWeeks })}
         </p>
-        <p className="match__position">Position #{match.waitlistPosition}</p>
+        <p className="match__position">{t("Position #{position}", { position: match.waitlistPosition })}</p>
         {onChoose && (
           <button type="button" className="btn btn--primary btn--sm" onClick={onChoose}>
-            Choose
+            {t("Choose")}
           </button>
         )}
       </div>
@@ -201,6 +206,7 @@ function MatchCard({ match, onChoose, chosen }: { match: ClinicMatch; onChoose?:
 }
 
 function VerificationList({ steps }: { steps: VerificationStep[] }) {
+  const { t } = useI18n();
   return (
     <ul className="verify">
       {steps.map((step) => (
@@ -214,9 +220,9 @@ function VerificationList({ steps }: { steps: VerificationStep[] }) {
           )}
           <div>
             <p className="verify__label">
-              {step.label} <span className="sr-only">{step.status}</span>
+              {t(step.label)} <span className="sr-only">{t(step.status)}</span>
             </p>
-            <p className="verify__detail">{step.detail}</p>
+            <Tx as="p" className="verify__detail" text={step.detail} />
           </div>
         </li>
       ))}
@@ -224,25 +230,28 @@ function VerificationList({ steps }: { steps: VerificationStep[] }) {
   );
 }
 
-const HccCard = () => (
-  <SectionCard id="hcc" title="Health Care Connect" icon={<HeartPulse size={16} />}>
-    <p className="aside-text">
-      Ontario's official program for finding a family doctor or nurse practitioner. Register online or call <strong>8-1-1</strong>. Participation is voluntary
-      and people with greater health needs are prioritised.
-    </p>
-    <p className="aside-links">
-      <a href={HEALTH_CARE_CONNECT_URL} target="_blank" rel="noreferrer">
-        Register with Health Care Connect <ExternalLink size={11} aria-hidden="true" />
-      </a>
-    </p>
-    <p className="fineprint">
-      The clinic directory in CivicOS is illustrative sample data to demonstrate matching. It is not a list of real clinics.
-    </p>
-  </SectionCard>
-);
+const HccCard = () => {
+  const { t } = useI18n();
+  return (
+    <SectionCard id="hcc" title={t("Health Care Connect")} icon={<HeartPulse size={16} />}>
+      <p className="aside-text">
+        {t(
+          "Ontario's official program for finding a family doctor or nurse practitioner. Register online or call 8-1-1. Participation is voluntary and people with greater health needs are prioritised.",
+        )}
+      </p>
+      <p className="aside-links">
+        <a href={HEALTH_CARE_CONNECT_URL} target="_blank" rel="noreferrer">
+          {t("Register with Health Care Connect")} <ExternalLink size={11} aria-hidden="true" />
+        </a>
+      </p>
+      <p className="fineprint">{t("The clinic directory in CivicOS is illustrative sample data to demonstrate matching. It is not a list of real clinics.")}</p>
+    </SectionCard>
+  );
+};
 
 export default function DoctorModule({ onBack }: { onBack: () => void }) {
   const { data, requests, emailVerified, signedIn, saveDoctor, updateDoctorVerification, withdrawRequest } = useCivicData();
+  const { t, tp, formatDate } = useI18n();
   const record = data.doctor;
   const request = requests.find((r) => r.id === record?.requestId);
 
@@ -275,7 +284,7 @@ export default function DoctorModule({ onBack }: { onBack: () => void }) {
           id="doctor-status"
           title={
             <>
-              Your waitlist {request.demo && <DemoTag />}
+              {t("Your waitlist")} {request.demo && <DemoTag />}
             </>
           }
           icon={<ShieldCheck size={16} />}
@@ -284,38 +293,38 @@ export default function DoctorModule({ onBack }: { onBack: () => void }) {
               type="button"
               className="link-btn link-btn--muted"
               onClick={() => {
-                if (window.confirm("Leave this waitlist and search again?")) withdrawRequest(record.requestId);
+                if (window.confirm(t("Leave this waitlist and search again?"))) withdrawRequest(record.requestId);
               }}
             >
-              <RotateCcw size={13} aria-hidden="true" /> Search again
+              <RotateCcw size={13} aria-hidden="true" /> {t("Search again")}
             </button>
           }
         >
           <p className="mono ref-line">
-            {request.referenceId} · Joined {shortDate(record.submittedAt)}
+            {request.referenceId} · {t("Joined {date}", { date: formatDate(record.submittedAt) })}
           </p>
           <ol className="timeline timeline--horizontal">
             {request.stages.map((stage) => (
               <li key={stage.key} className={`timeline__item timeline__item--${stage.state}`}>
                 <span className="timeline__dot" aria-hidden="true" />
                 <div>
-                  <p className="timeline__label">{stage.label}</p>
+                  <p className="timeline__label">{t(stage.label)}</p>
                   <p className="timeline__meta">
-                    {stage.state === "blocked" ? "Needs verification" : stage.date ? shortDate(stage.date) : stage.state === "current" ? "In progress" : ""}
+                    {stage.state === "blocked" ? t("Needs verification") : stage.date ? formatDate(stage.date) : stage.state === "current" ? t("In progress") : ""}
                   </p>
                 </div>
               </li>
             ))}
           </ol>
           <MatchCard match={record.match} />
-          <h3 className="subhead">Verification</h3>
+          <h3 className="subhead">{t("Verification")}</h3>
           <VerificationList steps={record.verification} />
           {pendingVerification && (
             <div className="verify-actions">
-              {!signedIn && <Notice tone="info">Sign in with a verified CivicOS account (top right), then refresh verification.</Notice>}
+              {!signedIn && <Notice tone="info">{t("Sign in with a verified CivicOS account from your profile in the menu, then refresh verification.")}</Notice>}
               <label className="checkbox">
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-                <span>I consent to CivicOS sharing my intake with {record.match.clinic.name}.</span>
+                <span>{t("I consent to CivicOS sharing my intake with {clinic}.", { clinic: record.match.clinic.name })}</span>
               </label>
               <button
                 type="button"
@@ -329,11 +338,11 @@ export default function DoctorModule({ onBack }: { onBack: () => void }) {
                   )
                 }
               >
-                Refresh verification
+                {t("Refresh verification")}
               </button>
             </div>
           )}
-          <p className="fineprint">Waitlist position and timing are estimates from the sample directory.</p>
+          <p className="fineprint">{t("Waitlist position and timing are estimates from the sample directory.")}</p>
         </SectionCard>
       </>,
     );
@@ -343,21 +352,21 @@ export default function DoctorModule({ onBack }: { onBack: () => void }) {
     const verification = buildVerification(intake, { emailVerified, consentGiven: consent });
     const healthOk = verification.find((v) => v.id === "health-number")?.status === "complete";
     return shell(
-      <SectionCard id="doctor-verify" title="Verify and join the waitlist" icon={<ShieldCheck size={16} />}>
+      <SectionCard id="doctor-verify" title={t("Verify and join the waitlist")} icon={<ShieldCheck size={16} />}>
         <MatchCard match={chosen} chosen />
         <VerificationList steps={verification} />
         {!emailVerified && (
           <Notice tone="info">
-            You can join now; the clinic can't contact you until your email is verified. Sign in with a verified CivicOS account to complete this step.
+            {t("You can join now; the clinic can't contact you until your email is verified. Sign in with a verified CivicOS account to complete this step.")}
           </Notice>
         )}
         <label className="checkbox">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-          <span>I consent to CivicOS sharing my intake with {chosen.clinic.name}.</span>
+          <span>{t("I consent to CivicOS sharing my intake with {clinic}.", { clinic: chosen.clinic.name })}</span>
         </label>
         <div className="result-actions">
           <button type="button" className="btn btn--secondary" onClick={() => setChosen(null)}>
-            Back to matches
+            {t("Back to matches")}
           </button>
           <button
             type="button"
@@ -367,7 +376,7 @@ export default function DoctorModule({ onBack }: { onBack: () => void }) {
               saveDoctor({ intake, selectedClinicId: chosen.clinic.id, match: chosen, priority: result.priority, verification })
             }
           >
-            Join waitlist
+            {t("Join waitlist")}
           </button>
         </div>
       </SectionCard>,
@@ -376,14 +385,18 @@ export default function DoctorModule({ onBack }: { onBack: () => void }) {
 
   if (result && intake) {
     return shell(
-      <SectionCard id="doctor-matches" title={`${result.matches.length} clinic${result.matches.length === 1 ? "" : "s"} matched`} icon={<Stethoscope size={16} />}>
+      <SectionCard
+        id="doctor-matches"
+        title={tp("{count} clinic matched", "{count} clinics matched", result.matches.length)}
+        icon={<Stethoscope size={16} />}
+      >
         {result.priority === "high" && (
           <Notice tone="info">
-            <strong>Higher-need priority:</strong> {result.priorityReasons.join(", ")}. Estimated waits reflect earlier placement.
+            <strong>{t("Higher-need priority:")}</strong> {result.priorityReasons.map((r) => t(r)).join(", ")}. {t("Estimated waits reflect earlier placement.")}
           </Notice>
         )}
         {result.matches.length === 0 ? (
-          <Notice tone="warning">No clinics fit all your requirements. Try a longer travel distance or make language preferred rather than required.</Notice>
+          <Notice tone="warning">{t("No clinics fit all your requirements. Try a longer travel distance or make language preferred rather than required.")}</Notice>
         ) : (
           <div className="matches">
             {result.matches.map((m) => (
@@ -394,13 +407,15 @@ export default function DoctorModule({ onBack }: { onBack: () => void }) {
         {result.excluded.length > 0 && (
           <div className="excluded">
             <button type="button" className="link-btn" aria-expanded={showExcluded} onClick={() => setShowExcluded((s) => !s)}>
-              {showExcluded ? "Hide" : "Show"} {result.excluded.length} clinics that didn't fit
+              {showExcluded
+                ? tp("Hide {count} clinic that didn't fit", "Hide {count} clinics that didn't fit", result.excluded.length)
+                : tp("Show {count} clinic that didn't fit", "Show {count} clinics that didn't fit", result.excluded.length)}
             </button>
             {showExcluded && (
               <ul className="excluded__list">
                 {result.excluded.map((e) => (
                   <li key={e.clinic.id}>
-                    <strong>{e.clinic.name}</strong> · {e.reason}
+                    <strong>{e.clinic.name}</strong> · {t(e.reason)}
                   </li>
                 ))}
               </ul>
@@ -416,10 +431,10 @@ export default function DoctorModule({ onBack }: { onBack: () => void }) {
               setIntake(null);
             }}
           >
-            Edit answers
+            {t("Edit answers")}
           </button>
         </div>
-        <p className="fineprint">Scores weigh distance (30), language (20), care needs (25), availability (15) and convenience (10). Sample directory.</p>
+        <p className="fineprint">{t("Scores weigh distance (30), language (20), care needs (25), availability (15) and convenience (10). Sample directory.")}</p>
       </SectionCard>,
     );
   }

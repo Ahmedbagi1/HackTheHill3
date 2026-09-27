@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { date, radio, select, text, when } from "../../data/fieldBuilders";
 import { useCivicData } from "../../state/civicDataStore";
-import { cad, shortDate } from "../../lib/time";
+import { useI18n } from "../../i18n/i18nContext";
+import Tx from "../../i18n/Tx";
 import { DemoTag, Notice, Pill, SectionCard } from "../../components/ui/primitives";
 import ModuleShell from "../shared/ModuleShell";
 import IntakeStepper, { type IntakeStep } from "../shared/IntakeStepper";
@@ -94,11 +95,11 @@ function toIntake(v: Record<string, unknown>, domains: Partial<Record<Developmen
   };
 }
 
-const STATUS_PILL: Record<ProgramPathway["status"], ReactNode> = {
-  recommended: <Pill tone="info">Next step</Pill>,
-  eligible: <Pill tone="success">Eligible</Pill>,
-  "not-yet": <Pill tone="neutral">Not yet</Pill>,
-  "not-eligible": <Pill tone="neutral">Not applicable</Pill>,
+const STATUS_PILL: Record<ProgramPathway["status"], { tone: "info" | "success" | "neutral"; label: string }> = {
+  recommended: { tone: "info", label: "Next step" },
+  eligible: { tone: "success", label: "Eligible" },
+  "not-yet": { tone: "neutral", label: "Not yet" },
+  "not-eligible": { tone: "neutral", label: "Not applicable" },
 };
 
 function DomainMatrix({
@@ -108,27 +109,28 @@ function DomainMatrix({
   value: Partial<Record<DevelopmentalDomain, DomainSeverity>>;
   onChange: (domain: DevelopmentalDomain, severity: DomainSeverity | "none") => void;
 }) {
+  const { t } = useI18n();
   return (
     <fieldset className="matrix">
-      <legend className="field__label">How much support does your child need in each area?</legend>
+      <legend className="field__label">{t("How much support does your child need in each area?")}</legend>
       <div className="matrix__head" aria-hidden="true">
         <span />
         {SEVERITIES.map((s) => (
-          <span key={s.value}>{s.label}</span>
+          <span key={s.value}>{t(s.label)}</span>
         ))}
       </div>
       {DOMAINS.map((d) => (
-        <div key={d.id} className="matrix__row" role="radiogroup" aria-label={d.label}>
+        <div key={d.id} className="matrix__row" role="radiogroup" aria-label={t(d.label)}>
           <span className="matrix__label">
-            {d.label}
-            <small>{d.hint}</small>
+            {t(d.label)}
+            <small>{t(d.hint)}</small>
           </span>
           {SEVERITIES.map((s) => {
             const checked = (value[d.id] ?? "none") === s.value;
             return (
               <label key={s.value} className={`matrix__cell${checked ? " is-checked" : ""}`}>
                 <input type="radio" name={`domain-${d.id}`} checked={checked} onChange={() => onChange(d.id, s.value)} />
-                <span className="matrix__cell-label">{s.label}</span>
+                <span className="matrix__cell-label">{t(s.label)}</span>
               </label>
             );
           })}
@@ -139,55 +141,60 @@ function DomainMatrix({
 }
 
 function TriageResult({ triage, intake }: { triage: AutismTriageResult; intake: AutismIntake }) {
+  const { t, tp, formatMoney } = useI18n();
   return (
     <>
       {triage.urgency === "urgent" ? (
         <Notice tone="danger">
-          <strong>Urgent.</strong> Tell AccessOAP this is urgent so you're connected to urgent response services. If anyone is in immediate danger, call 9-1-1.
+          <strong>{t("Urgent.")}</strong>{" "}
+          {t("Tell AccessOAP this is urgent so you're connected to urgent response services. If anyone is in immediate danger, call 9-1-1.")}
         </Notice>
       ) : triage.urgency === "priority" ? (
         <Notice tone="info">
-          <strong>Act soon.</strong> Early support makes the biggest difference{triage.ageMonths <= 48 ? " at your child's age" : ""}.
+          <strong>{t("Act soon.")}</strong>{" "}
+          {triage.ageMonths <= 48 ? t("Early support makes the biggest difference at your child's age.") : t("Early support makes the biggest difference.")}
         </Notice>
       ) : null}
 
       <dl className="facts">
         <div>
-          <dt>Child</dt>
+          <dt>{t("Child")}</dt>
           <dd>
             {intake.childFirstName}
             <small>
-              {triage.ageYears >= 2 ? `${triage.ageYears} years` : `${triage.ageMonths} months`} old
+              {triage.ageYears >= 2
+                ? tp("{count} year old", "{count} years old", triage.ageYears)
+                : tp("{count} month old", "{count} months old", triage.ageMonths)}
             </small>
           </dd>
         </div>
         <div>
-          <dt>OAP registration</dt>
-          <dd>{triage.oapEligible ? (intake.registeredWithOap ? "Registered" : "Can register now") : "Not yet"}</dd>
+          <dt>{t("OAP registration")}</dt>
+          <dd>{t(triage.oapEligible ? (intake.registeredWithOap ? "Registered" : "Can register now") : "Not yet")}</dd>
         </div>
         <div>
-          <dt>Indicative support level</dt>
-          <dd>{triage.funding ? LEVEL_LABELS[triage.funding.level] : "After diagnosis"}</dd>
+          <dt>{t("Indicative support level")}</dt>
+          <dd>{t(triage.funding ? LEVEL_LABELS[triage.funding.level] : "After diagnosis")}</dd>
         </div>
       </dl>
 
       {triage.eligibilityGaps.length > 0 && (
         <Notice tone="warning">
-          <strong>Before registering:</strong> {triage.eligibilityGaps.join(" ")}
+          <strong>{t("Before registering:")}</strong> {triage.eligibilityGaps.map((gap) => t(gap)).join(" ")}
         </Notice>
       )}
 
-      <h3 className="subhead">Program pathways</h3>
+      <h3 className="subhead">{t("Program pathways")}</h3>
       <ul className="pathways">
         {triage.pathways.map((p) => (
           <li key={p.id} className={`pathway pathway--${p.status}`}>
             <div className="pathway__head">
-              <p className="pathway__name">{p.name}</p>
-              {STATUS_PILL[p.status]}
+              <p className="pathway__name">{t(p.name)}</p>
+              <Pill tone={STATUS_PILL[p.status].tone}>{t(STATUS_PILL[p.status].label)}</Pill>
             </div>
-            <p className="pathway__desc">{p.description}</p>
+            <Tx as="p" className="pathway__desc" text={p.description} />
             <p className="pathway__reason">
-              {p.reason} <strong>{p.status === "recommended" || p.status === "eligible" ? p.nextStep : ""}</strong>
+              <Tx text={p.reason} /> <strong>{p.status === "recommended" || p.status === "eligible" ? <Tx text={p.nextStep} /> : ""}</strong>
             </p>
           </li>
         ))}
@@ -195,12 +202,16 @@ function TriageResult({ triage, intake }: { triage: AutismTriageResult; intake: 
 
       {triage.therapies.length > 0 && (
         <>
-          <h3 className="subhead">Therapies that match these needs</h3>
+          <h3 className="subhead">{t("Therapies that match these needs")}</h3>
           <ul className="therapies">
-            {triage.therapies.map((t) => (
-              <li key={t.therapy}>
-                <strong>{t.label}</strong>
-                <span>for {t.because.map((d) => DOMAINS.find((x) => x.id === d)?.label.toLowerCase()).join(", ")}</span>
+            {triage.therapies.map((match) => (
+              <li key={match.therapy}>
+                <strong>{t(match.label)}</strong>
+                <span>
+                  {t("for {areas}", {
+                    areas: match.because.map((d) => t(DOMAINS.find((x) => x.id === d)?.label ?? d).toLowerCase()).join(", "),
+                  })}
+                </span>
               </li>
             ))}
           </ul>
@@ -209,30 +220,33 @@ function TriageResult({ triage, intake }: { triage: AutismTriageResult; intake: 
 
       {triage.funding && (
         <>
-          <h3 className="subhead">Indicative core clinical funding</h3>
+          <h3 className="subhead">{t("Indicative core clinical funding")}</h3>
           <div className="funding">
             <p className="funding__amount">
-              {cad.format(triage.funding.annualAmount)}
-              <span>/year</span>
+              {formatMoney(triage.funding.annualAmount)}
+              <span>{t("/year")}</span>
             </p>
             <p className="funding__meta">
-              {BAND_LABELS[triage.funding.ageBand]} · {LEVEL_LABELS[triage.funding.level]} needs ·{" "}
-              {triage.funding.installments === 1 ? "single payment" : `${triage.funding.installments} installments of up to $25,000`}
+              {t(BAND_LABELS[triage.funding.ageBand])} · {t("{level} needs", { level: t(LEVEL_LABELS[triage.funding.level]) })} ·{" "}
+              {triage.funding.installments === 1
+                ? t("single payment")
+                : t("{count} installments of up to {amount}", { count: triage.funding.installments, amount: formatMoney(25000) })}
             </p>
             <table className="band-table">
-              <caption className="sr-only">Funding by support level for {BAND_LABELS[triage.funding.ageBand]}</caption>
+              <caption className="sr-only">{t("Funding by support level for {band}", { band: t(BAND_LABELS[triage.funding.ageBand]) })}</caption>
               <tbody>
                 {triage.funding.bandTable.map((row) => (
                   <tr key={row.level} className={row.level === triage.funding!.level ? "is-current" : ""}>
-                    <th scope="row">{LEVEL_LABELS[row.level]}</th>
-                    <td>{cad.format(row.amount)}</td>
+                    <th scope="row">{t(LEVEL_LABELS[row.level])}</th>
+                    <td>{formatMoney(row.amount)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="fineprint">
-              Amounts are Ontario's published 2026 core clinical funding by age band (age on January 1). Your actual level is set by an AccessOAP care
-              coordinator at the determination-of-needs interview.
+              {t(
+                "Amounts are Ontario's published 2026 core clinical funding by age band (age on January 1). Your actual level is set by an AccessOAP care coordinator at the determination-of-needs interview.",
+              )}
             </p>
           </div>
         </>
@@ -245,6 +259,7 @@ const CLAIM_STATUSES: ClaimStatus[] = ["submitted", "approved", "reimbursed", "r
 
 function ClaimsTracker({ allocation, claims }: { allocation: number; claims: FundingClaim[] }) {
   const { addClaim, setClaimStatus } = useCivicData();
+  const { t, formatMoney, formatDate } = useI18n();
   const summary = summarizeClaims(allocation, claims);
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), providerName: PROVIDERS[0].name, therapy: "aba" as TherapyType, amount: "" });
   const [error, setError] = useState<string | null>(null);
@@ -257,7 +272,7 @@ function ClaimsTracker({ allocation, claims }: { allocation: number; claims: Fun
       return;
     }
     if (amount > summary.remaining) {
-      setError(`That's more than the ${cad.format(summary.remaining)} left in this year's allocation.`);
+      setError(t("That's more than the {amount} left in this year's allocation.", { amount: formatMoney(summary.remaining) }));
       return;
     }
     setError(null);
@@ -267,27 +282,34 @@ function ClaimsTracker({ allocation, claims }: { allocation: number; claims: Fun
 
   const pct = allocation ? Math.min(100, (summary.claimed / allocation) * 100) : 0;
   return (
-    <SectionCard id="claims" title="Funding & claims" icon={<Wallet size={16} />} actions={<Pill tone="info">{cad.format(summary.remaining)} left</Pill>}>
-      <div className="meter" role="img" aria-label={`${cad.format(summary.claimed)} claimed of ${cad.format(allocation)}`}>
+    <SectionCard
+      id="claims"
+      title={t("Funding & claims")}
+      icon={<Wallet size={16} />}
+      actions={<Pill tone="info">{t("{amount} left", { amount: formatMoney(summary.remaining) })}</Pill>}
+    >
+      <div className="meter" role="img" aria-label={t("{claimed} claimed of {allocation}", { claimed: formatMoney(summary.claimed), allocation: formatMoney(allocation) })}>
         <div className="meter__track">
           <span className="meter__fill" style={{ width: `${pct}%` }} />
         </div>
         <div className="meter__labels">
-          <span>{cad.format(summary.claimed)} claimed · {cad.format(summary.reimbursed)} reimbursed</span>
-          <span>Allocation {cad.format(allocation)}</span>
+          <span>
+            {t("{claimed} claimed · {reimbursed} reimbursed", { claimed: formatMoney(summary.claimed), reimbursed: formatMoney(summary.reimbursed) })}
+          </span>
+          <span>{t("Allocation {amount}", { amount: formatMoney(allocation) })}</span>
         </div>
       </div>
       {summary.reportingRequired && (
-        <p className="fineprint">Your funding comes in installments: report expenses before the next installment is released. Keep receipts for seven years.</p>
+        <p className="fineprint">{t("Your funding comes in installments: report expenses before the next installment is released. Keep receipts for seven years.")}</p>
       )}
 
       <form className="claim-form" onSubmit={submit}>
         <label>
-          <span className="field__label">Date</span>
+          <span className="field__label">{t("Date")}</span>
           <input className="field__input" type="date" value={form.date} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setForm({ ...form, date: e.target.value })} />
         </label>
         <label>
-          <span className="field__label">Provider</span>
+          <span className="field__label">{t("Provider")}</span>
           <select className="field__input field__select" value={form.providerName} onChange={(e) => setForm({ ...form, providerName: e.target.value })}>
             {PROVIDERS.map((p) => (
               <option key={p.id} value={p.name}>
@@ -297,17 +319,17 @@ function ClaimsTracker({ allocation, claims }: { allocation: number; claims: Fun
           </select>
         </label>
         <label>
-          <span className="field__label">Service</span>
+          <span className="field__label">{t("Service")}</span>
           <select className="field__input field__select" value={form.therapy} onChange={(e) => setForm({ ...form, therapy: e.target.value as TherapyType })}>
-            {(Object.keys(THERAPY_LABELS) as TherapyType[]).map((t) => (
-              <option key={t} value={t}>
-                {THERAPY_LABELS[t]}
+            {(Object.keys(THERAPY_LABELS) as TherapyType[]).map((therapy) => (
+              <option key={therapy} value={therapy}>
+                {t(THERAPY_LABELS[therapy])}
               </option>
             ))}
           </select>
         </label>
         <label>
-          <span className="field__label">Amount</span>
+          <span className="field__label">{t("Amount")}</span>
           <div className="input-group">
             <span className="input-group__affix input-group__affix--prefix" aria-hidden="true">
               $
@@ -322,46 +344,46 @@ function ClaimsTracker({ allocation, claims }: { allocation: number; claims: Fun
           </div>
         </label>
         <button type="submit" className="btn btn--primary btn--sm">
-          <Plus size={14} aria-hidden="true" /> Log expense
+          <Plus size={14} aria-hidden="true" /> {t("Log expense")}
         </button>
       </form>
       {error && (
         <p className="field__error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
 
       {claims.length === 0 ? (
-        <p className="muted-block">No expenses logged yet.</p>
+        <p className="muted-block">{t("No expenses logged yet.")}</p>
       ) : (
         <table className="claims">
-          <caption className="sr-only">Logged expenses</caption>
+          <caption className="sr-only">{t("Logged expenses")}</caption>
           <thead>
             <tr>
-              <th scope="col">Date</th>
-              <th scope="col">Provider</th>
-              <th scope="col">Service</th>
+              <th scope="col">{t("Date")}</th>
+              <th scope="col">{t("Provider")}</th>
+              <th scope="col">{t("Service")}</th>
               <th scope="col" className="num">
-                Amount
+                {t("Amount")}
               </th>
-              <th scope="col">Status</th>
+              <th scope="col">{t("Status")}</th>
             </tr>
           </thead>
           <tbody>
             {claims.map((c) => (
               <tr key={c.id}>
-                <td>{shortDate(`${c.date}T12:00:00`)}</td>
+                <td>{formatDate(`${c.date}T12:00:00`)}</td>
                 <td>{c.providerName}</td>
-                <td>{THERAPY_LABELS[c.therapy]}</td>
-                <td className="num">{cad.format(c.amount)}</td>
+                <td>{t(THERAPY_LABELS[c.therapy])}</td>
+                <td className="num">{formatMoney(c.amount, true)}</td>
                 <td>
                   <label className="sr-only" htmlFor={`claim-${c.id}`}>
-                    Status for {c.providerName} on {c.date}
+                    {t("Status for {provider} on {date}", { provider: c.providerName, date: formatDate(`${c.date}T12:00:00`) })}
                   </label>
                   <select id={`claim-${c.id}`} className="claim-status" value={c.status} onChange={(e) => setClaimStatus(c.id, e.target.value as ClaimStatus)}>
                     {CLAIM_STATUSES.map((s) => (
                       <option key={s} value={s}>
-                        {s[0].toUpperCase() + s.slice(1)}
+                        {t(s[0].toUpperCase() + s.slice(1))}
                       </option>
                     ))}
                   </select>
@@ -376,17 +398,18 @@ function ClaimsTracker({ allocation, claims }: { allocation: number; claims: Fun
 }
 
 function ProvidersList({ therapies }: { therapies: TherapyType[] }) {
+  const { t } = useI18n();
   const [onlyMatching, setOnlyMatching] = useState(therapies.length > 0);
-  const list = PROVIDERS.filter((p) => !onlyMatching || p.therapies.some((t) => therapies.includes(t)));
+  const list = PROVIDERS.filter((p) => !onlyMatching || p.therapies.some((therapy) => therapies.includes(therapy)));
   return (
     <SectionCard
       id="providers"
-      title="Service providers"
+      title={t("Service providers")}
       icon={<BadgeCheck size={16} />}
       actions={
         therapies.length > 0 ? (
           <label className="toggle">
-            <input type="checkbox" checked={onlyMatching} onChange={(e) => setOnlyMatching(e.target.checked)} /> Matching needs
+            <input type="checkbox" checked={onlyMatching} onChange={(e) => setOnlyMatching(e.target.checked)} /> {t("Matching needs")}
           </label>
         ) : null
       }
@@ -396,40 +419,44 @@ function ProvidersList({ therapies }: { therapies: TherapyType[] }) {
           <li key={p.id} className="provider">
             <div>
               <p className="provider__name">
-                {p.name} {p.verified ? <Pill tone="success">Verified</Pill> : <Pill tone="neutral">Unverified</Pill>}
+                {p.name} {p.verified ? <Pill tone="success">{t("Verified")}</Pill> : <Pill tone="neutral">{t("Unverified")}</Pill>}
               </p>
               <p className="provider__meta">
-                {p.therapies.map((t) => THERAPY_LABELS[t]).join(" · ")} — {p.neighbourhood} · {p.languages.join(", ")}
+                {p.therapies.map((therapy) => t(THERAPY_LABELS[therapy])).join(" · ")} · {p.neighbourhood} · {p.languages.map((l) => t(l)).join(", ")}
               </p>
             </div>
-            <span className={`provider__status${p.acceptingClients ? "" : " is-full"}`}>{p.acceptingClients ? "Accepting" : "Waitlist"}</span>
+            <span className={`provider__status${p.acceptingClients ? "" : " is-full"}`}>{t(p.acceptingClients ? "Accepting" : "Waitlist")}</span>
           </li>
         ))}
       </ul>
-      <p className="fineprint">Illustrative directory. Confirm any provider with AccessOAP and their regulatory college before booking.</p>
+      <p className="fineprint">{t("Illustrative directory. Confirm any provider with AccessOAP and their regulatory college before booking.")}</p>
     </SectionCard>
   );
 }
 
-const PeerSupport = () => (
-  <SectionCard id="peer" title="Support for caregivers" icon={<Users size={16} />}>
-    <ul className="resources">
-      {PEER_RESOURCES.map((r) => (
-        <li key={r.id}>
-          <a href={r.url} target="_blank" rel="noreferrer" className="resource">
-            <span className="resource__name">
-              {r.name} <ExternalLink size={11} aria-hidden="true" />
-            </span>
-            <span className="resource__desc">{r.description}</span>
-          </a>
-        </li>
-      ))}
-    </ul>
-  </SectionCard>
-);
+const PeerSupport = () => {
+  const { t } = useI18n();
+  return (
+    <SectionCard id="peer" title={t("Support for caregivers")} icon={<Users size={16} />}>
+      <ul className="resources">
+        {PEER_RESOURCES.map((r) => (
+          <li key={r.id}>
+            <a href={r.url} target="_blank" rel="noreferrer" className="resource">
+              <span className="resource__name">
+                {t(r.name)} <ExternalLink size={11} aria-hidden="true" />
+              </span>
+              <Tx className="resource__desc" text={r.description} />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </SectionCard>
+  );
+};
 
 export default function AutismModule({ onBack }: { onBack: () => void }) {
   const { data, requests, saveAutism, withdrawRequest } = useCivicData();
+  const { t, formatDate } = useI18n();
   const record = data.autism;
   const request = requests.find((r) => r.id === record?.requestId);
 
@@ -509,14 +536,14 @@ export default function AutismModule({ onBack }: { onBack: () => void }) {
 
   if (record && request) {
     const allocation = record.triage.funding?.annualAmount ?? 0;
-    const therapies = record.triage.therapies.map((t) => t.therapy);
+    const therapies = record.triage.therapies.map((match) => match.therapy);
     return shell(
       <>
         <SectionCard
           id="autism-overview"
           title={
             <>
-              {record.intake.childFirstName}'s program {request.demo && <DemoTag />}
+              {t("{name}'s program", { name: record.intake.childFirstName })} {request.demo && <DemoTag />}
             </>
           }
           icon={<ListChecks size={16} />}
@@ -525,28 +552,28 @@ export default function AutismModule({ onBack }: { onBack: () => void }) {
               type="button"
               className="link-btn link-btn--muted"
               onClick={() => {
-                if (window.confirm("Remove this intake and start again?")) withdrawRequest(record.requestId);
+                if (window.confirm(t("Remove this intake and start again?"))) withdrawRequest(record.requestId);
               }}
             >
-              <RotateCcw size={13} aria-hidden="true" /> Start over
+              <RotateCcw size={13} aria-hidden="true" /> {t("Start over")}
             </button>
           }
         >
           <p className="mono ref-line">
-            {request.referenceId} · Saved {shortDate(record.submittedAt)}
+            {request.referenceId} · {t("Saved {date}", { date: formatDate(record.submittedAt) })}
           </p>
           <ol className="timeline timeline--horizontal">
             {request.stages.map((stage) => (
               <li key={stage.key} className={`timeline__item timeline__item--${stage.state}`}>
                 <span className="timeline__dot" aria-hidden="true" />
                 <div>
-                  <p className="timeline__label">{stage.label}</p>
-                  <p className="timeline__meta">{stage.state === "blocked" ? "Needs diagnosis" : stage.date ? shortDate(stage.date) : ""}</p>
+                  <p className="timeline__label">{t(stage.label)}</p>
+                  <p className="timeline__meta">{stage.state === "blocked" ? t("Needs diagnosis") : stage.date ? formatDate(stage.date) : ""}</p>
                 </div>
               </li>
             ))}
           </ol>
-          <h3 className="subhead">Next steps</h3>
+          <h3 className="subhead">{t("Next steps")}</h3>
           <ul className="next-steps">
             {record.triage.pathways
               .filter((p) => p.status === "recommended" || p.status === "eligible")
@@ -554,7 +581,7 @@ export default function AutismModule({ onBack }: { onBack: () => void }) {
                 <li key={p.id}>
                   {p.status === "eligible" ? <CircleCheck size={15} aria-hidden="true" /> : <CircleDashed size={15} aria-hidden="true" />}
                   <span>
-                    <strong>{p.name}.</strong> {p.nextStep}
+                    <strong>{t(p.name)}.</strong> <Tx text={p.nextStep} />
                   </span>
                 </li>
               ))}
@@ -564,22 +591,22 @@ export default function AutismModule({ onBack }: { onBack: () => void }) {
                 <li key={p.id} className="is-muted">
                   <CircleMinus size={15} aria-hidden="true" />
                   <span>
-                    <strong>{p.name}:</strong> {p.reason}
+                    <strong>{t(p.name)}:</strong> <Tx text={p.reason} />
                   </span>
                 </li>
               ))}
           </ul>
           <p className="aside-links">
             <a href={ACCESS_OAP_URL} target="_blank" rel="noreferrer">
-              Contact AccessOAP <ExternalLink size={11} aria-hidden="true" />
+              {t("Contact AccessOAP")} <ExternalLink size={11} aria-hidden="true" />
             </a>
           </p>
         </SectionCard>
         {record.triage.funding ? (
           <ClaimsTracker allocation={allocation} claims={record.claims} />
         ) : (
-          <SectionCard id="claims" title="Funding & claims" icon={<Receipt size={16} />}>
-            <p className="muted-block">Funding tracking opens once your child has a written diagnosis and an OAP funding allocation.</p>
+          <SectionCard id="claims" title={t("Funding & claims")} icon={<Receipt size={16} />}>
+            <p className="muted-block">{t("Funding tracking opens once your child has a written diagnosis and an OAP funding allocation.")}</p>
           </SectionCard>
         )}
         <ProvidersList therapies={therapies} />
@@ -590,14 +617,14 @@ export default function AutismModule({ onBack }: { onBack: () => void }) {
 
   if (preview) {
     return shell(
-      <SectionCard id="autism-result" title="Your child's pathway" icon={<Sparkles size={16} />}>
+      <SectionCard id="autism-result" title={t("Your child's pathway")} icon={<Sparkles size={16} />}>
         <TriageResult triage={preview.triage} intake={preview.intake} />
         <div className="result-actions">
           <button type="button" className="btn btn--secondary" onClick={() => setPreview(null)}>
-            Edit answers
+            {t("Edit answers")}
           </button>
           <button type="button" className="btn btn--primary" onClick={() => saveAutism({ intake: preview.intake, triage: preview.triage })}>
-            <HandHeart size={15} aria-hidden="true" /> Save to my dashboard
+            <HandHeart size={15} aria-hidden="true" /> {t("Save to my dashboard")}
           </button>
         </div>
       </SectionCard>,
@@ -606,7 +633,7 @@ export default function AutismModule({ onBack }: { onBack: () => void }) {
 
   return shell(
     <>
-      <Notice tone="info">If your child or anyone else is in immediate danger, call 9-1-1.</Notice>
+      <Notice tone="info">{t("If your child or anyone else is in immediate danger, call 9-1-1.")}</Notice>
       <IntakeStepper
         steps={steps}
         values={values}

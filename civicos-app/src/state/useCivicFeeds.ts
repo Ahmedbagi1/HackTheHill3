@@ -102,14 +102,15 @@ export interface NewsFeed {
   fetchedAt: string;
 }
 
-export function useNews(province: ProvinceCode): LoadState<NewsFeed> {
+/** Headlines in French (Radio-Canada) when `lang` is "fr"; otherwise English (CBC News). */
+export function useNews(province: ProvinceCode, lang: "en" | "fr" = "en"): LoadState<NewsFeed> {
   const [state, setState] = useState<LoadState<NewsFeed>>({ status: "loading", data: null, error: null });
 
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
       try {
-        const response = await fetch(`/api/feeds/news?province=${province}`, { signal: controller.signal });
+        const response = await fetch(`/api/feeds/news?province=${province}&lang=${lang}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`News ${response.status}`);
         setState({ status: "ready", data: (await response.json()) as NewsFeed, error: null });
       } catch (error) {
@@ -123,7 +124,7 @@ export function useNews(province: ProvinceCode): LoadState<NewsFeed> {
       controller.abort();
       window.clearInterval(timer);
     };
-  }, [province]);
+  }, [province, lang]);
 
   return state;
 }

@@ -36,11 +36,6 @@
     grid-template-columns: minmax(0, 1fr) 320px;
   }
 
-  .sidebar {
-    position: sticky;
-    top: calc(var(--topbar-h) + 24px);
-  }
-
   .toolbar {
     flex-direction: row;
     align-items: center;

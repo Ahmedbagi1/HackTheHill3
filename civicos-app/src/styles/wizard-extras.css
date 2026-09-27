@@ -293,11 +293,6 @@
   color: var(--slate-400);
 }
 
-/* Sidebar variant: stack button under the input */
-.sidebar .waste-lookup__row {
-  flex-direction: column;
-}
-
 /* ==========================================================================
    Geotag
    ========================================================================== */

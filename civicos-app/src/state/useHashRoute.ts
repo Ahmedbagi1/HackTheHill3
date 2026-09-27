@@ -1,9 +1,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 export type ModuleRoute = "housing" | "doctor" | "autism";
-export type Route = "dashboard" | "services" | ModuleRoute;
+export type Route = "dashboard" | "alerts" | ModuleRoute;
 
-const ROUTES: Route[] = ["dashboard", "services", "housing", "doctor", "autism"];
+const ROUTES: Route[] = ["dashboard", "alerts", "housing", "doctor", "autism"];
 
 const parse = (hash: string): Route => {
   const name = hash.replace(/^#\/?/, "").split("?")[0];

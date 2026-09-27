@@ -17,29 +17,28 @@ import { FINDER_STEPS, INITIAL_FINDER_ANSWERS, prefillFor, runBenefitsFinder } f
 import { validateFields, visibleFields } from "../../lib/validation";
 import { useCountUp } from "../../hooks/useCountUp";
 import { useDialogBehavior } from "../../hooks/useDialogBehavior";
-
-const currency = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
-const currencyCents = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" });
+import { useI18n } from "../../i18n/i18nContext";
+import Tx from "../../i18n/Tx";
 
 const HeroTotal = ({ total }) => {
+  const { t, formatMoney } = useI18n();
   const shown = useCountUp(total);
   return (
     <div className="finder-hero">
-      <p className="finder-hero__label">You may qualify for</p>
+      <p className="finder-hero__label">{t("You may qualify for")}</p>
       <p className="finder-hero__value" aria-hidden="true">
-        {currency.format(shown)}
-        <span className="finder-hero__unit">/year</span>
+        {formatMoney(shown)}
+        <span className="finder-hero__unit">{t("/year")}</span>
       </p>
       {/* Screen readers get the final figure, not every animation frame. */}
-      <p className="sr-only">{currency.format(total)} per year</p>
-      <p className="finder-hero__sub">
-        ≈ {currencyCents.format(total / 12)} a month in tax-free benefits and grants
-      </p>
+      <p className="sr-only">{t("{amount} per year", { amount: formatMoney(total) })}</p>
+      <p className="finder-hero__sub">{t("≈ {amount} a month in tax-free benefits and grants", { amount: formatMoney(total / 12, true) })}</p>
     </div>
   );
 };
 
 const Results = ({ results, onApply, onEdit }) => {
+  const { t, formatMoney } = useI18n();
   const { total, cash, other } = results;
 
   return (
@@ -48,10 +47,9 @@ const Results = ({ results, onApply, onEdit }) => {
         <HeroTotal total={total} />
       ) : (
         <div className="finder-hero finder-hero--empty">
-          <p className="finder-hero__label">No cash benefits found</p>
+          <p className="finder-hero__label">{t("No cash benefits found")}</p>
           <p className="finder-hero__sub">
-            Based on your answers you're above the income limits for these programs. Coverage and support you may
-            still qualify for is listed below.
+            {t("Based on your answers you're above the income limits for these programs. Coverage and support you may still qualify for is listed below.")}
           </p>
         </div>
       )}
@@ -61,19 +59,19 @@ const Results = ({ results, onApply, onEdit }) => {
       {cash.length > 0 && (
         <section className="finder-section" aria-labelledby="finder-cash">
           <h3 id="finder-cash" className="finder-section__title">
-            Counted in your total
+            {t("Counted in your total")}
           </h3>
           <ul className="finder-list">
             {cash.map((item) => (
               <li key={item.id} className="finder-item">
                 <span className={`breakdown__swatch breakdown__swatch--${item.slot}`} aria-hidden="true" />
                 <div className="finder-item__body">
-                  <p className="finder-item__label">{item.label}</p>
-                  <p className="finder-item__detail">{item.detail}</p>
+                  <p className="finder-item__label">{t(item.label)}</p>
+                  <Tx as="p" className="finder-item__detail" text={item.detail} />
                 </div>
-                <p className="finder-item__amount">{currency.format(item.amount)}</p>
+                <p className="finder-item__amount">{formatMoney(item.amount)}</p>
                 <button type="button" className="btn btn--primary btn--sm" onClick={() => onApply(item.serviceId)}>
-                  Apply <ArrowRight size={14} aria-hidden="true" />
+                  {t("Apply")} <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </li>
             ))}
@@ -84,7 +82,7 @@ const Results = ({ results, onApply, onEdit }) => {
       {other.length > 0 && (
         <section className="finder-section" aria-labelledby="finder-other">
           <h3 id="finder-other" className="finder-section__title">
-            Also worth a look (not counted)
+            {t("Also worth a look (not counted)")}
           </h3>
           <ul className="finder-list">
             {other.map((item) => (
@@ -94,12 +92,12 @@ const Results = ({ results, onApply, onEdit }) => {
                 </span>
                 <div className="finder-item__body">
                   <p className="finder-item__label">
-                    {item.label} · <span className="finder-item__headline">{item.headline}</span>
+                    {t(item.label)} · <span className="finder-item__headline">{t(item.headline)}</span>
                   </p>
-                  <p className="finder-item__detail">{item.detail}</p>
+                  <Tx as="p" className="finder-item__detail" text={item.detail} />
                 </div>
                 <button type="button" className="btn btn--secondary btn--sm" onClick={() => onApply(item.serviceId)}>
-                  Check <ArrowRight size={14} aria-hidden="true" />
+                  {t("Check")} <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </li>
             ))}
@@ -108,13 +106,12 @@ const Results = ({ results, onApply, onEdit }) => {
       )}
 
       <p className="finder-footnote">
-        <Sparkles size={13} aria-hidden="true" /> Estimates use July 2026 – June 2027 federal rates and 2026–27 OSAP
-        rules, and assume you file your 2025 tax return. The OSAP figure is a simplified model. Applying opens each
-        form prefilled with your answers.
+        <Sparkles size={13} aria-hidden="true" />{" "}
+        {t("Estimates use July 2026 – June 2027 federal rates and 2026–27 OSAP rules, and assume you file your 2025 tax return. The OSAP figure is a simplified model. Applying opens each form prefilled with your answers.")}
       </p>
 
       <button type="button" className="link-btn" onClick={onEdit}>
-        <RotateCcw size={13} aria-hidden="true" /> Change my answers
+        <RotateCcw size={13} aria-hidden="true" /> {t("Change my answers")}
       </button>
     </div>
   );
@@ -125,6 +122,7 @@ const Results = ({ results, onApply, onEdit }) => {
  * with a single total. "Apply" opens the matching wizard prefilled.
  */
 const BenefitsFinder = ({ onClose, onApply }) => {
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState(INITIAL_FINDER_ANSWERS);
   const [errors, setErrors] = useState({});
@@ -189,13 +187,13 @@ const BenefitsFinder = ({ onClose, onApply }) => {
         <div className="modal__header">
           <div>
             <p className="modal__eyebrow">
-              <PiggyBank size={13} aria-hidden="true" /> Benefits check · 5 questions
+              <PiggyBank size={13} aria-hidden="true" /> {t("Benefits check · 5 questions")}
             </p>
             <h2 id="finder-title" className="modal__title">
-              Money you might be missing
+              {t("Money you might be missing")}
             </h2>
           </div>
-          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+          <button type="button" className="icon-btn" aria-label={t("Close")} onClick={onClose}>
             <X size={20} />
           </button>
         </div>
@@ -206,10 +204,9 @@ const BenefitsFinder = ({ onClose, onApply }) => {
           ) : (
             <>
               <StepIndicator steps={FINDER_STEPS} current={step} onSelect={goToStep} />
-              <h3 className="form-section-title">
-                {step + 1} of {FINDER_STEPS.length}: {currentStep.title}
-              </h3>
-              <p className="form-section-text">{currentStep.description}</p>
+              <p className="form-section-progress">{t("Step {current} of {total}", { current: step + 1, total: FINDER_STEPS.length })}</p>
+              <h3 className="form-section-title">{t(currentStep.title)}</h3>
+              <Tx as="p" className="form-section-text" text={currentStep.description} />
               <div className="fields fields--two">
                 {visibleFields(currentStep.fields, answers).map((field) => (
                   <FieldRenderer
@@ -230,23 +227,23 @@ const BenefitsFinder = ({ onClose, onApply }) => {
           {showResults ? (
             <div className="modal__footer-end">
               <button type="button" className="btn btn--primary" onClick={onClose}>
-                Done
+                {t("Done")}
               </button>
             </div>
           ) : (
             <>
               {step > 0 ? (
                 <button type="button" className="btn btn--secondary" onClick={() => goToStep(step - 1)}>
-                  <ChevronLeft size={16} aria-hidden="true" /> Back
+                  <ChevronLeft size={16} aria-hidden="true" /> {t("Back")}
                 </button>
               ) : (
                 <button type="button" className="btn btn--ghost" onClick={onClose}>
-                  Cancel
+                  {t("Cancel")}
                 </button>
               )}
               <div className="modal__footer-end">
                 <button type="submit" className="btn btn--primary">
-                  {step < lastStep ? "Next" : "Show my results"}
+                  {step < lastStep ? t("Next") : t("Show my results")}
                   <ChevronRight size={16} aria-hidden="true" />
                 </button>
               </div>

@@ -4,10 +4,11 @@ import { DemoTag, SectionCard, SeverityBadge, Skeleton } from "../../components/
 import { buildDemoAgencyAlerts } from "../../data/demoAlerts";
 import { AGENCY_STATUS_LINKS, JURISDICTION_LABEL } from "../../data/jurisdictions";
 import { PROVINCES } from "../../data/provinces";
+import { useI18n } from "../../i18n/i18nContext";
 import { sortAlerts } from "../../lib/alertSources";
 import { resolutionText } from "../../lib/alertText";
-import { relativeTime } from "../../lib/time";
-import type { AlertCategory, AlertRegion, JurisdictionCode, RegionalAlert, RegionalAlertFeed } from "../../types/alerts";
+import { localizeFeedTitle } from "../../lib/feedText";
+import type { AlertCategory, AlertRegion, AlertText, JurisdictionCode, RegionalAlert, RegionalAlertFeed } from "../../types/alerts";
 import type { Severity } from "../../types/dashboard";
 import type { LoadState } from "../../state/useCivicFeeds";
 
@@ -22,47 +23,81 @@ const CATEGORY_LABEL: Record<AlertCategory, string> = {
   weather: "Weather",
 };
 
-const REGIONS: AlertRegion[] = ["ALL", "FED", ...PROVINCES.map((p) => p.code)];
+const SEVERITY_WORD: Record<Severity, { one: string; other: string }> = {
+  critical: { one: "{count} critical", other: "{count} critical" },
+  moderate: { one: "{count} moderate", other: "{count} moderate" },
+  advisory: { one: "{count} advisory", other: "{count} advisories" },
+};
 
-const regionName = (region: AlertRegion) => (region === "ALL" ? "all of Canada" : JURISDICTION_LABEL[region]);
+const REGIONS: AlertRegion[] = ["ALL", "FED", ...PROVINCES.map((p) => p.code)];
 
 const inRegion = (jurisdiction: JurisdictionCode, region: AlertRegion) => region === "ALL" || jurisdiction === region;
 
+interface Shown {
+  text: string;
+  /** Set when the text is shown in its source language (English). */
+  lang?: string;
+}
+
 function AlertCard({ alert }: { alert: RegionalAlert }) {
+  const { t, locale, formatWhen, relativeTime } = useI18n();
+
+  const field = (name: keyof AlertText): Shown | null => {
+    const value = alert[name];
+    if (!value) return null;
+    const published = locale === "fr" ? alert.translations?.fr?.[name] : undefined;
+    if (published) return { text: published };
+    if (!alert.sourceText?.includes(name)) return { text: t(value) };
+    if (name === "title") {
+      const title = localizeFeedTitle(value, t);
+      return { text: title.text, lang: title.sourceOnly && locale !== "en" ? "en" : undefined };
+    }
+    return { text: value, lang: locale !== "en" ? "en" : undefined };
+  };
+
+  const title = field("title");
+  const detail = field("detail");
+  const area = field("area");
+
   return (
     <li className={`ralert ralert--${alert.severity}`}>
       <div className="ralert__top">
-        <span
-          className={`jbadge jbadge--${alert.jurisdiction === "FED" ? "fed" : "prov"}`}
-          title={`${JURISDICTION_LABEL[alert.jurisdiction]} · ${alert.agencyName}`}
-        >
+        <span className={`jbadge jbadge--${alert.jurisdiction === "FED" ? "fed" : "prov"}`} title={`${t(JURISDICTION_LABEL[alert.jurisdiction])} · ${t(alert.agencyName)}`}>
           <span className="jbadge__code">{alert.jurisdiction}</span>
           {alert.agency}
         </span>
         <SeverityBadge severity={alert.severity} />
-        <span className="ralert__category">{CATEGORY_LABEL[alert.category]}</span>
+        <span className="ralert__category">{t(CATEGORY_LABEL[alert.category])}</span>
         {alert.demo && <DemoTag />}
       </div>
-      <p className="ralert__title">{alert.title}</p>
-      {alert.detail && <p className="ralert__detail">{alert.detail}</p>}
+      {title && (
+        <p className="ralert__title" lang={title.lang}>
+          {title.text}
+        </p>
+      )}
+      {detail && (
+        <p className="ralert__detail" lang={detail.lang} data-untranslated={detail.lang ? true : undefined}>
+          {detail.text}
+        </p>
+      )}
       <div className="ralert__meta">
         <p className="ralert__eta">
           <Clock size={14} aria-hidden="true" />
-          <span>{resolutionText(alert)}</span>
+          <span>{resolutionText(alert, t, formatWhen)}</span>
         </p>
-        {alert.area && (
-          <p className="ralert__area">
+        {area && (
+          <p className="ralert__area" lang={area.lang}>
             <MapPin size={13} aria-hidden="true" />
-            <span>{alert.area}</span>
+            <span>{area.text}</span>
           </p>
         )}
       </div>
       <p className="ralert__source">
         <a href={alert.sourceUrl} target="_blank" rel="noreferrer">
-          {alert.agencyName}
+          {t(alert.agencyName)}
           <ExternalLink size={11} aria-hidden="true" />
         </a>
-        {alert.updatedAt && <> · updated {relativeTime(alert.updatedAt)}</>}
+        {alert.updatedAt && <> · {t("updated {time}", { time: relativeTime(alert.updatedAt) })}</>}
       </p>
     </li>
   );
@@ -77,15 +112,13 @@ interface Props {
 }
 
 export default function RegionalAlerts({ feed, defaultRegion, demo }: Props) {
+  const { t, tp, relativeTime } = useI18n();
   const [chosen, setChosen] = useState<AlertRegion | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [mountedAt] = useState(() => Date.now());
   const region = chosen ?? defaultRegion;
 
-  const all = useMemo(
-    () => sortAlerts([...(feed.data?.items ?? []), ...(demo ? buildDemoAgencyAlerts(mountedAt) : [])]),
-    [feed.data, demo, mountedAt],
-  );
+  const all = useMemo(() => sortAlerts([...(feed.data?.items ?? []), ...(demo ? buildDemoAgencyAlerts(mountedAt) : [])]), [feed.data, demo, mountedAt]);
 
   const regionCounts = useMemo(() => {
     const counts = Object.fromEntries(REGIONS.map((r) => [r, 0])) as Record<AlertRegion, number>;
@@ -104,6 +137,7 @@ export default function RegionalAlerts({ feed, defaultRegion, demo }: Props) {
   });
   const statusLinks = AGENCY_STATUS_LINKS.filter((l) => inRegion(l.jurisdiction, region));
   const sources = (feed.data?.sources ?? []).filter((s) => region === "ALL" || region === "FED" || s.coverage.includes(region));
+  const regionName = region === "ALL" ? t("all of Canada") : t(JURISDICTION_LABEL[region]);
 
   const selectRegion = (next: AlertRegion) => {
     setChosen(next);
@@ -114,22 +148,21 @@ export default function RegionalAlerts({ feed, defaultRegion, demo }: Props) {
     <SectionCard
       id="canada-alerts"
       className="ralerts"
-      title="Alerts across Canada"
+      title={t("Alerts across Canada")}
       icon={<Siren size={16} />}
       actions={
-        <button type="button" className="icon-btn icon-btn--sm" aria-label="Refresh alerts" onClick={feed.refresh}>
+        <button type="button" className="icon-btn icon-btn--sm" aria-label={t("Refresh alerts")} onClick={feed.refresh}>
           <RefreshCw size={15} />
         </button>
       }
     >
       <div className="ralerts__controls">
         <label className="region-select">
-          <span className="region-select__label">Filter by region</span>
+          <span className="region-select__label">{t("Filter by region")}</span>
           <select value={region} onChange={(e) => selectRegion(e.target.value as AlertRegion)}>
             {REGIONS.map((r) => (
               <option key={r} value={r}>
-                {r === "ALL" ? "All Canada" : r === "FED" ? "Federal (Canada-wide)" : `${r} · ${JURISDICTION_LABEL[r]}`} (
-                {regionCounts[r]})
+                {r === "ALL" ? t("All Canada") : r === "FED" ? t("Federal (Canada-wide)") : `${r} · ${t(JURISDICTION_LABEL[r])}`} ({regionCounts[r]})
               </option>
             ))}
           </select>
@@ -140,7 +173,7 @@ export default function RegionalAlerts({ feed, defaultRegion, demo }: Props) {
               .filter((s) => severityCounts[s] > 0)
               .map((s) => (
                 <span key={s} className={`ralerts__count ralerts__count--${s}`}>
-                  <strong>{severityCounts[s]}</strong> {s}
+                  {tp(SEVERITY_WORD[s].one, SEVERITY_WORD[s].other, severityCounts[s])}
                 </span>
               ))}
           </p>
@@ -151,12 +184,12 @@ export default function RegionalAlerts({ feed, defaultRegion, demo }: Props) {
         <Skeleton lines={4} />
       ) : items.length === 0 ? (
         <div className="muted-block">
-          {feed.status === "error" && !feed.data ? feed.error : `No active alerts for ${regionName(region)}.`}
+          {feed.status === "error" && !feed.data ? t(feed.error) : t("No active alerts for {region}.", { region: regionName })}
           {region !== "ALL" && regionCounts.ALL > 0 && (
             <>
               {" "}
               <button type="button" className="link-btn" onClick={() => selectRegion("ALL")}>
-                See all of Canada ({regionCounts.ALL})
+                {t("See all of Canada ({count})", { count: regionCounts.ALL })}
               </button>
             </>
           )}
@@ -171,18 +204,16 @@ export default function RegionalAlerts({ feed, defaultRegion, demo }: Props) {
 
       {items.length > limit && (
         <button type="button" className="link-btn" onClick={() => setLimit((l) => l + PAGE)}>
-          Show {Math.min(PAGE, items.length - limit)} more of {items.length - limit}
+          {t("Show {count} more of {total}", { count: Math.min(PAGE, items.length - limit), total: items.length - limit })}
         </button>
       )}
 
       {statusLinks.length > 0 && (
         <details className="status-links">
           <summary>
-            Official service status pages <span className="chip__count">{statusLinks.length}</span>
+            {t("Official service status pages")} <span className="chip__count">{statusLinks.length}</span>
           </summary>
-          <p className="status-links__note">
-            These agencies don't publish a public status feed. Check their official pages for outages.
-          </p>
+          <p className="status-links__note">{t("These agencies don't publish a public status feed. Check their official pages for outages.")}</p>
           <ul>
             {statusLinks.map((link) => (
               <li key={`${link.jurisdiction}-${link.agency}`}>
@@ -190,9 +221,9 @@ export default function RegionalAlerts({ feed, defaultRegion, demo }: Props) {
                   <span className="jbadge__code">{link.jurisdiction}</span>
                   {link.agency}
                 </span>
-                <span className="status-links__covers">{link.covers}</span>
+                <span className="status-links__covers">{t(link.covers)}</span>
                 <a href={link.url} target="_blank" rel="noreferrer">
-                  Check status <ExternalLink size={11} aria-hidden="true" />
+                  {t("Check status")} <ExternalLink size={11} aria-hidden="true" />
                 </a>
               </li>
             ))}
@@ -200,15 +231,15 @@ export default function RegionalAlerts({ feed, defaultRegion, demo }: Props) {
         </details>
       )}
 
-      <ul className="sources" aria-label="Alert sources">
+      <ul className="sources" aria-label={t("Alert sources")}>
         {sources.map((s) => (
           <li key={s.id} className={`source source--${s.status}`}>
             <span className="source__dot" aria-hidden="true" />
-            {s.label}: {s.status === "live" ? "live" : "unavailable"}
+            {t(s.label)}: {t(s.status === "live" ? "live" : "unavailable")}
           </li>
         ))}
-        {demo && <li className="source">Demo notices are illustrative</li>}
-        {feed.data && <li className="source">Updated {relativeTime(feed.data.fetchedAt)}</li>}
+        {demo && <li className="source">{t("Demo notices are illustrative")}</li>}
+        {feed.data && <li className="source">{t("Updated {time}", { time: relativeTime(feed.data.fetchedAt) })}</li>}
       </ul>
     </SectionCard>
   );

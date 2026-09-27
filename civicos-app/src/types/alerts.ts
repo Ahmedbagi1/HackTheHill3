@@ -43,6 +43,19 @@ export interface RegionalAlert {
   sourceUrl: string;
   /** Sample notice shown only while demo data is loaded. */
   demo?: boolean;
+  /** Versions the source itself publishes in other languages (Environment Canada issues French). */
+  translations?: { fr?: AlertText };
+  /**
+   * Fields holding third-party free text. They're shown as published (English)
+   * rather than run through the translator; generated fields are translated.
+   */
+  sourceText?: Array<keyof AlertText>;
+}
+
+export interface AlertText {
+  title?: string;
+  detail?: string;
+  area?: string;
 }
 
 export interface AlertSource {

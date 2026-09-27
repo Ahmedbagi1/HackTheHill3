@@ -146,14 +146,8 @@
 }
 
 /* ==========================================================================
-   Sidebar panels
+   Panels
    ========================================================================== */
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
