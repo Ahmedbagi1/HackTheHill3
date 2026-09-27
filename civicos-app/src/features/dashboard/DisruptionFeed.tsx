@@ -4,6 +4,7 @@ import { SectionCard, SeverityBadge, Skeleton } from "../../components/ui/primit
 import { relativeTime } from "../../lib/time";
 import type { DisruptionFeed as Feed, DisruptionKind } from "../../types/dashboard";
 import type { LoadState } from "../../state/useCivicFeeds";
+import { useLanguage } from "../../context/LanguageContext";
 
 const KIND_META: Record<DisruptionKind, { label: string; Icon: typeof Zap }> = {
   power: { label: "Power", Icon: Zap },
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function DisruptionFeed({ feed, coverage, nearLabel }: Props) {
+  const { t } = useLanguage();
   const [kind, setKind] = useState<DisruptionKind | "all">("all");
   const [limit, setLimit] = useState(PAGE);
   const data = feed.data;
@@ -37,7 +39,7 @@ export default function DisruptionFeed({ feed, coverage, nearLabel }: Props) {
   return (
     <SectionCard
       id="disruptions"
-      title="Disruptions & outages"
+      title={t("alerts.title")}
       icon={<Activity size={16} />}
       actions={
         coverage && (

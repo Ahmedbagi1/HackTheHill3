@@ -8,7 +8,7 @@ import { browserSpeechAvailable, getVoiceStatus, synthesizeSpeech } from "../../
  * Exposes an AnalyserNode for live ElevenLabs audio so the waveform reflects
  * the real signal; browser speech can't be analysed, so the waveform animates.
  */
-export function useSpeechPlayer({ text, cacheKey }) {
+export function useSpeechPlayer({ text, cacheKey, lang = "en-CA" }) {
   const [status, setStatus] = useState("idle"); // idle | loading | playing | paused | ended | error
   const [mode, setMode] = useState(null); // "elevenlabs" | "browser" | null
   const [progress, setProgress] = useState(0);
@@ -85,7 +85,8 @@ export function useSpeechPlayer({ text, cacheKey }) {
     synth.cancel();
 
     const voices = synth.getVoices();
-    const voice = voices.find((v) => v.lang === "en-CA") ?? voices.find((v) => v.lang.startsWith("en"));
+    const base = lang.split("-")[0];
+    const voice = voices.find((v) => v.lang === lang) ?? voices.find((v) => v.lang.startsWith(base));
 
     // Queue sentence-sized chunks: some engines (e.g. Chrome's cloud voices)
     // silently stop long utterances after ~15 seconds.
@@ -95,7 +96,7 @@ export function useSpeechPlayer({ text, cacheKey }) {
       const start = offset;
       offset += sentence.length;
       const utterance = new SpeechSynthesisUtterance(sentence.trim());
-      utterance.lang = "en-CA";
+      utterance.lang = lang;
       utterance.rate = 0.98;
       if (voice) utterance.voice = voice;
       utterance.onboundary = (event) => setProgress(Math.min(1, (start + event.charIndex) / text.length));

@@ -21,16 +21,18 @@ import { DISPLAY_ONLY_TYPES, buildInitialFormData, isEmptyValue, validateFields,
 import { formatAnswer } from "../../lib/formatting";
 import { buildReviewPacketHtml, downloadReviewPacket } from "../../lib/reviewPacket";
 import { useDialogBehavior } from "../../hooks/useDialogBehavior";
+import { useLanguage } from "../../context/LanguageContext";
+import QuickAutoFill from "../../features/ai/QuickAutoFill";
 
 const makeReferenceId = () => `CIV-${Date.now().toString(36).toUpperCase()}`;
 
 /** First few answered questions, used as the request summary on the dashboard. */
-const summarizeAnswers = (steps, formData, limit = 3) =>
+const summarizeAnswers = (steps, formData, lang, limit = 3) =>
   steps
     .flatMap((step) => visibleFields(step.fields, formData))
     .filter((field) => !DISPLAY_ONLY_TYPES.has(field.type) && !isEmptyValue(field, formData[field.name]))
     .slice(0, limit)
-    .map((field) => ({ label: field.reviewLabel ?? field.label, value: formatAnswer(field, formData[field.name], formData) }));
+    .map((field) => ({ label: field.reviewLabel ?? field.label, value: formatAnswer(field, formData[field.name], formData, lang) }));
 
 const printPacket = (packetInput) => {
   const url = URL.createObjectURL(
@@ -53,7 +55,8 @@ const printPacket = (packetInput) => {
  * Answers live in one `formData` object, so Back/Next never lose input.
  */
 const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }) => {
-  const steps = useMemo(() => buildSteps(service.form), [service]);
+  const { currentLang, t } = useLanguage();
+  const steps = useMemo(() => buildSteps(service.form, currentLang), [service, currentLang]);
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState(() => {
     const initial = buildInitialFormData(service.form);
@@ -80,8 +83,23 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
     bodyRef.current?.scrollTo({ top: 0 });
   }, [step]);
 
+  // Auto-filled fields stay marked (and flash when shown) until the citizen edits them, including on later steps.
+  const [aiFilled, setAiFilled] = useState(() => new Set());
+
+  const applyAutoFill = (values, filled) => {
+    setFormData((prev) => ({ ...prev, ...values }));
+    setErrors((prev) => Object.fromEntries(Object.entries(prev).filter(([name]) => !(name in values))));
+    setAiFilled(new Set(filled));
+  };
+
   const updateField = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setAiFilled((prev) => {
+      if (!prev.has(name)) return prev;
+      const next = new Set(prev);
+      next.delete(name);
+      return next;
+    });
     setErrors((prev) => {
       if (!(name in prev)) return prev;
       const next = { ...prev };
@@ -101,6 +119,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
     formData,
     referenceId,
     submittedAt,
+    lang: currentLang,
   });
 
   const handleSubmit = (event) => {
@@ -111,7 +130,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
         ? validateFields(currentStep.fields, formData)
         : formData.consent
           ? {}
-          : { consent: "Please confirm the information is accurate." };
+          : { consent: t("Please confirm the information is accurate.", "Veuillez confirmer que les renseignements sont exacts.") };
     setErrors(stepErrors);
 
     const firstInvalid = Object.keys(stepErrors)[0];
@@ -128,7 +147,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
         serviceId: service.id,
         title: service.title,
         referenceId,
-        summary: summarizeAnswers(steps.slice(0, lastStep), formData),
+        summary: summarizeAnswers(steps.slice(0, lastStep), formData, currentLang),
       });
     }
   };
@@ -151,7 +170,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
         <div className="modal__header">
           <div>
             <p className="modal__eyebrow">
-              {submission ? "Application submitted" : service.agency}
+              {submission ? t("Application submitted", "Demande soumise") : service.agency}
             </p>
             <h2 id="wizard-title" className="modal__title">
               {service.title}
@@ -162,13 +181,13 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
             <button
               type="button"
               className="icon-btn"
-              aria-label={`Explain ${service.title} in plain language`}
-              title="Explain to me"
+              aria-label={`${t("audio.summary")}: ${service.title}`}
+              title={t("audio.summary")}
               onClick={() => onListen(service)}
             >
               <Volume2 size={19} />
             </button>
-            <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <button type="button" className="icon-btn" aria-label={t("Close", "Fermer")} onClick={onClose}>
               <X size={20} />
             </button>
           </div>
@@ -192,18 +211,18 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
                   className="btn btn--primary"
                   onClick={() => downloadReviewPacket(packetInput(submission.referenceId, submission.submittedAt))}
                 >
-                  <Download size={16} aria-hidden="true" /> Download review packet
+                  <Download size={16} aria-hidden="true" /> {t("Download review packet", "Télécharger le récapitulatif")}
                 </button>
                 <button
                   type="button"
                   className="btn btn--secondary"
                   onClick={() => printPacket(packetInput(submission.referenceId, submission.submittedAt))}
                 >
-                  <Printer size={16} aria-hidden="true" /> Print
+                  <Printer size={16} aria-hidden="true" /> {t("Print", "Imprimer")}
                 </button>
               </div>
               <a className="success__link" href={service.officialUrl} target="_blank" rel="noreferrer">
-                Official information <ExternalLink size={12} aria-hidden="true" />
+                {t("Official information", "Renseignements officiels")} <ExternalLink size={12} aria-hidden="true" />
               </a>
             </div>
           ) : (
@@ -213,11 +232,15 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
               {isPrefilled && step === 0 && (
                 <p className="callout prefill-note">
                   <Sparkles size={16} aria-hidden="true" />
-                  We've filled in answers from your benefits check. Review them before continuing.
+                  {t(
+                    "We've filled in answers from your benefits check. Review them before continuing.",
+                    "Nous avons rempli des réponses à partir de votre vérification des prestations. Vérifiez-les avant de continuer.",
+                  )}
                 </p>
               )}
+              {step === 0 && <QuickAutoFill fields={answerSteps.flatMap((answerStep) => answerStep.fields)} onApply={applyAutoFill} />}
               <h3 className="form-section-title">
-                Step {step + 1}: {currentStep.title}
+                {t(`Step ${step + 1}: ${currentStep.title}`, `Étape ${step + 1} : ${currentStep.title}`)}
               </h3>
               <p className="form-section-text">{currentStep.description}</p>
 
@@ -231,6 +254,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
                       error={errors[field.name]}
                       formData={formData}
                       onChange={updateField}
+                      highlighted={aiFilled.has(field.name)}
                     />
                   ))}
                 </div>
@@ -265,7 +289,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
                     className="link-btn review-download"
                     onClick={() => downloadReviewPacket(packetInput(null, new Date()))}
                   >
-                    <Download size={13} aria-hidden="true" /> Download a draft copy
+                    <Download size={13} aria-hidden="true" /> {t("Download a draft copy", "Télécharger une copie provisoire")}
                   </button>
                 </>
               )}
@@ -277,7 +301,7 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
           {submission ? (
             <div className="modal__footer-end">
               <button type="button" className="btn btn--primary" onClick={onClose}>
-                Done
+                {t("wizard.done")}
               </button>
             </div>
           ) : (
@@ -285,23 +309,23 @@ const DynamicModalWizard = ({ service, prefill, onClose, onListen, onSubmitted }
               {step > 0 ? (
                 <button type="button" className="btn btn--secondary" onClick={() => goToStep(step - 1)}>
                   <ChevronLeft size={16} aria-hidden="true" />
-                  Back
+                  {t("wizard.back")}
                 </button>
               ) : (
                 <button type="button" className="btn btn--ghost" onClick={onClose}>
-                  Cancel
+                  {t("wizard.cancel")}
                 </button>
               )}
               <div className="modal__footer-end">
                 {step < lastStep ? (
                   <button type="submit" className="btn btn--primary">
-                    Next
+                    {t("wizard.next")}
                     <ChevronRight size={16} aria-hidden="true" />
                   </button>
                 ) : (
                   <button type="submit" className="btn btn--success">
                     <ShieldCheck size={16} aria-hidden="true" />
-                    Submit application
+                    {t("wizard.submit")}
                   </button>
                 )}
               </div>

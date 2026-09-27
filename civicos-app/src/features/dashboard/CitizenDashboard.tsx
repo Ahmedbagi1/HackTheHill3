@@ -4,6 +4,7 @@ import { ALERTS } from "../../data/alerts";
 import { PROVINCES_BY_CODE } from "../../data/provinces";
 import { greeting } from "../../lib/time";
 import { SectionCard } from "../../components/ui/primitives";
+import { useLanguage } from "../../context/LanguageContext";
 import { useCivicData } from "../../state/civicDataStore";
 import type { LoadState, NewsFeed as NewsData } from "../../state/useCivicFeeds";
 import type { WasteState } from "../../state/wasteSchedule";
@@ -48,10 +49,11 @@ export default function CitizenDashboard({
   waste,
 }: Props) {
   const { displayName, requests, location, setLocation, withdrawRequest, seedDemo, clearDemo } = useCivicData();
+  const { fmt } = useLanguage();
   const province = PROVINCES_BY_CODE[location.province];
   const demo = requests.some((r) => r.demo);
 
-  const today = new Intl.DateTimeFormat("en-CA", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
+  const today = fmt.today();
   const pending = requests.filter((r) => r.actionRequired).length;
   const nearLabel = waste.state.status === "ready" ? "your address" : null;
 

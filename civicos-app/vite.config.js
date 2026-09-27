@@ -2,10 +2,11 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import { civicFeedsProxy } from "./server/civicFeedsProxy.js";
 import { elevenLabsProxy } from "./server/elevenLabsProxy.js";
+import { geminiProxy } from "./server/geminiProxy.js";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load all env vars (not just VITE_*) so the ElevenLabs key stays server-side.
+  // Load all env vars (not just VITE_*) so the ElevenLabs and Gemini keys stay server-side.
   const env = loadEnv(mode, process.cwd(), "");
 
   return {
@@ -18,6 +19,7 @@ export default defineConfig(({ mode }) => {
         modelId: env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2",
       }),
       civicFeedsProxy(),
+      geminiProxy({ apiKey: env.GEMINI_API_KEY, legacyClientKey: env.VITE_GEMINI_API_KEY }),
     ],
     build: {
       rolldownOptions: {

@@ -25,12 +25,13 @@ const OptionalTag = ({ field }) =>
 const applyTransform = (field, value) => (field.transform === "uppercase" ? value.toUpperCase() : value);
 
 /** Renders any field type defined in data/fieldBuilders.js. */
-const FieldRenderer = ({ field, value, error, formData, onChange }) => {
+/** `highlighted` flashes the field green after an AI auto-fill so the citizen can check it. */
+const FieldRenderer = ({ field, value, error, formData, onChange, highlighted = false }) => {
   const id = `field-${field.name}`;
   const hintId = field.hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
-  const fieldClass = `field${field.full ? " field--full" : ""}${error ? " field--error" : ""}`;
+  const fieldClass = `field${field.full ? " field--full" : ""}${error ? " field--error" : ""}${highlighted ? " field--ai-filled" : ""}`;
 
   /* Display-only ------------------------------------------------------ */
 

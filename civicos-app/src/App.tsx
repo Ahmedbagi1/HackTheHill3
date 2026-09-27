@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import NotificationBanner from "./components/common/NotificationBanner";
 import { Skeleton } from "./components/ui/primitives";
+import { LanguageProvider, useLanguage } from "./context/LanguageContext";
 import { BANNER_NOTICE } from "./data/alerts";
 import { SERVICES, SERVICES_BY_ID } from "./data/servicesData";
 import { PROVINCES_BY_CODE } from "./data/provinces";
@@ -10,6 +11,7 @@ import { useDashboardSignals } from "./features/dashboard/useDashboardSignals";
 import ServiceDirectory from "./features/directory/ServiceDirectory";
 import ServiceNav from "./features/navigation/ServiceNav";
 import { buildDirectory, DEFAULT_FILTERS } from "./lib/directory";
+import { useCivicTriage } from "./features/ai/useCivicTriage";
 import { CivicDataProvider } from "./state/CivicDataContext";
 import { useCivicData } from "./state/civicDataStore";
 import { useDisruptions, useNews } from "./state/useCivicFeeds";
@@ -29,6 +31,7 @@ const RequestDetailsDialog = lazy(() => import("./features/dashboard/RequestDeta
 const BenefitsFinder = lazy(() => import("./components/finder/BenefitsFinder"));
 const DynamicModalWizard = lazy(() => import("./components/wizard/DynamicModalWizard"));
 const ElevenLabsVoiceAssistant = lazy(() => import("./components/voice/ElevenLabsVoiceAssistant"));
+const AiExplainDialog = lazy(() => import("./features/ai/AiExplainDialog"));
 
 function PageFallback() {
   return (
@@ -39,6 +42,7 @@ function PageFallback() {
 }
 
 function AppShell() {
+  const { t, currentLang } = useLanguage();
   const [route, navigate] = useHashRoute();
   const civic = useCivicData();
   const province = PROVINCES_BY_CODE[civic.location.province];
@@ -50,6 +54,7 @@ function AppShell() {
     prefill: Record<string, unknown> | null;
   } | null>(null);
   const [voiceService, setVoiceService] = useState<CatalogService | null>(null);
+  const [explainService, setExplainService] = useState<CatalogService | null>(null);
   const [requestDetail, setRequestDetail] = useState<UserRequest | null>(null);
 
   const waste = useWasteSchedule(province.fullCoverage ? civic.location.address : undefined);
@@ -60,6 +65,7 @@ function AppShell() {
   const { notifications, emergency } = useDashboardSignals(civic.requests, waste.state, disruptions.data);
 
   const directory = useMemo(() => buildDirectory(filters, civic.location.province), [filters, civic.location.province]);
+  const triage = useCivicTriage(filters.query, currentLang);
   // Dashboard chips act as shortcuts into the whole directory, whatever filters were last used.
   const shortcutCounts = useMemo(
     () => buildDirectory({ ...DEFAULT_FILTERS, province: filters.province }, civic.location.province).intentCounts,
@@ -83,6 +89,8 @@ function AppShell() {
   const closeWizard = useCallback(() => setWizard(null), []);
   const openVoice = useCallback((service: CatalogService) => setVoiceService(service), []);
   const closeVoice = useCallback(() => setVoiceService(null), []);
+  const openExplain = useCallback((service: CatalogService) => setExplainService(service), []);
+  const closeExplain = useCallback(() => setExplainService(null), []);
   const openFinder = useCallback(() => setFinderOpen(true), []);
   const closeFinder = useCallback(() => setFinderOpen(false), []);
   const closeRequestDetail = useCallback(() => setRequestDetail(null), []);
@@ -116,7 +124,7 @@ function AppShell() {
   return (
     <div className="app">
       <a className="skip-link" href="#main">
-        Skip to main content
+        {t("Skip to main content", "Passer au contenu principal")}
       </a>
       {emergency ? (
         <NotificationBanner
@@ -126,11 +134,11 @@ function AppShell() {
             title: emergency.title,
             text: emergency.text,
           }}
-          actionLabel="Details"
+          actionLabel={t("Details", "Détails")}
           onAction={emergency.sourceUrl ? () => window.open(emergency.sourceUrl, "_blank", "noopener") : undefined}
         />
       ) : (
-        <NotificationBanner notice={BANNER_NOTICE} actionLabel="Check what you qualify for" onAction={openFinder} />
+        <NotificationBanner notice={BANNER_NOTICE} actionLabel={t("Check what you qualify for", "Vérifier votre admissibilité")} onAction={openFinder} />
       )}
 
       <DashboardHeader
@@ -176,6 +184,10 @@ function AppShell() {
           onStartService={openWizard}
           onListen={openVoice}
           onOpenModule={openModule}
+          onExplain={openExplain}
+          triage={triage.state}
+          onTriage={triage.triage}
+          onClearTriage={triage.clear}
         />
       )}
 
@@ -216,6 +228,8 @@ function AppShell() {
             }
           />
         )}
+
+        {explainService && <AiExplainDialog key={`explain-${explainService.id}`} service={explainService} onClose={closeExplain} />}
       </Suspense>
     </div>
   );
@@ -223,8 +237,10 @@ function AppShell() {
 
 export default function App() {
   return (
-    <CivicDataProvider>
-      <AppShell />
-    </CivicDataProvider>
+    <LanguageProvider>
+      <CivicDataProvider>
+        <AppShell />
+      </CivicDataProvider>
+    </LanguageProvider>
   );
 }

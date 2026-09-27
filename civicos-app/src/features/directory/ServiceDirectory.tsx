@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Info, SearchX } from "lucide-react";
+import { Info, SearchX, Sparkles } from "lucide-react";
 import SearchBar from "../../components/common/SearchBar";
 import ServiceCard from "../../components/dashboard/ServiceCard";
 import LifeEventChecklist from "../../components/dashboard/LifeEventChecklist";
@@ -11,6 +11,9 @@ import type { CatalogService, DirectoryItem, DirectoryResult } from "../../lib/d
 import type { ProvinceCode } from "../../types/dashboard";
 import type { DirectoryFilters, TierFilter } from "../../types/directory";
 import QuickIntents from "./QuickIntents";
+import TriagePanel from "../ai/TriagePanel";
+import type { TriageState } from "../ai/useCivicTriage";
+import { isTriageQuery } from "../../services/api/gemini/geminiTriage";
 import { ModuleCard, PortalCard } from "./DirectoryCards";
 
 interface Props {
@@ -22,6 +25,10 @@ interface Props {
   onStartService: (service: CatalogService) => void;
   onListen: (service: CatalogService) => void;
   onOpenModule: (id: ModuleEntry["id"]) => void;
+  onExplain: (service: CatalogService) => void;
+  triage: TriageState;
+  onTriage: (query: string) => void;
+  onClearTriage: () => void;
 }
 
 function heading(tier: TierFilter, provinceName: string): { title: string; lede: string } {
@@ -55,6 +62,10 @@ export default function ServiceDirectory({
   onStartService,
   onListen,
   onOpenModule,
+  onExplain,
+  triage,
+  onTriage,
+  onClearTriage,
 }: Props) {
   // Focus the search box only when the visitor arrived by typing.
   const [focusOnMount] = useState(() => filters.query.trim().length > 0);
@@ -74,6 +85,7 @@ export default function ServiceDirectory({
             stepNumber={stepByServiceId.get(item.id)}
             onStart={onStartService}
             onListen={onListen}
+            onExplain={onExplain}
           />
         );
       case "module":
@@ -102,7 +114,13 @@ export default function ServiceDirectory({
           {title}
         </h1>
         <p className="dir-hero__lede">{lede}</p>
-        <SearchBar value={filters.query} onChange={(query: string) => onChange({ query })} autoFocus={focusOnMount}>
+        <SearchBar
+          value={filters.query}
+          onChange={(query: string) => onChange({ query })}
+          autoFocus={focusOnMount}
+          onTriage={onTriage}
+          triageBusy={triage.status === "loading"}
+        >
           <QuickIntents active={filters.intent} counts={directory.intentCounts} onSelect={(intent) => onChange({ intent })} />
         </SearchBar>
       </section>
@@ -119,52 +137,73 @@ export default function ServiceDirectory({
         </p>
       )}
 
-      {lifeEvent && (
-        <LifeEventChecklist
-          key={lifeEvent.id}
-          lifeEvent={lifeEvent}
-          servicesById={SERVICES_BY_ID}
-          onStart={onStartService}
+      {triage.status !== "idle" && (
+        <TriagePanel
+          state={triage}
+          onClear={onClearTriage}
+          onRetry={onTriage}
+          onStartService={onStartService}
           onListen={onListen}
+          onExplain={onExplain}
         />
       )}
 
-      <div className="dir-toolbar">
-        <p className="results-meta" aria-live="polite">
-          Showing <strong>{items.length}</strong> service{items.length === 1 ? "" : "s"}
-          {summary && <span className="dir-toolbar__filters"> · {summary}</span>}
-        </p>
-        {filtered && (
-          <button type="button" className="btn btn--ghost btn--sm" onClick={onReset}>
-            Clear filters
-          </button>
-        )}
-      </div>
+      {/* A ready recommendation replaces keyword results until it's cleared. */}
+      {triage.status !== "ready" && (
+        <>
+          {lifeEvent && (
+            <LifeEventChecklist
+              key={lifeEvent.id}
+              lifeEvent={lifeEvent}
+              servicesById={SERVICES_BY_ID}
+              onStart={onStartService}
+              onListen={onListen}
+            />
+          )}
 
-      {items.length === 0 ? (
-        <div className="empty-state">
-          <span className="empty-state__icon" aria-hidden="true">
-            <SearchX size={22} />
-          </span>
-          <p className="empty-state__title">No services match these filters</p>
-          <p className="empty-state__text">Try different words, another topic, or all levels of government.</p>
-          <button type="button" className="btn btn--secondary" onClick={onReset}>
-            Clear filters
-          </button>
-        </div>
-      ) : ranked ? (
-        <div className="grid">{items.map(renderItem)}</div>
-      ) : (
-        groups.map(({ category, items: groupItems }) => (
-          <section key={category.id} className="dir-group" aria-labelledby={`group-${category.id}`}>
-            <h2 id={`group-${category.id}`} className="dir-group__title">
-              {category.label}
-              <span className="dir-group__count">{groupItems.length}</span>
-            </h2>
-            <p className="dir-group__description">{category.description}</p>
-            <div className="grid">{groupItems.map(renderItem)}</div>
-          </section>
-        ))
+          <div className="dir-toolbar">
+            <p className="results-meta" aria-live="polite">
+              Showing <strong>{items.length}</strong> service{items.length === 1 ? "" : "s"}
+              {summary && <span className="dir-toolbar__filters"> · {summary}</span>}
+            </p>
+            {filtered && (
+              <button type="button" className="btn btn--ghost btn--sm" onClick={onReset}>
+                Clear filters
+              </button>
+            )}
+          </div>
+
+          {items.length === 0 ? (
+            <div className="empty-state">
+              <span className="empty-state__icon" aria-hidden="true">
+                <SearchX size={22} />
+              </span>
+              <p className="empty-state__title">No services match these filters</p>
+              <p className="empty-state__text">Try different words, another topic, or all levels of government.</p>
+              {isTriageQuery(filters.query) && triage.status === "idle" && (
+                <button type="button" className="btn btn--ai" onClick={() => onTriage(filters.query)}>
+                  <Sparkles size={16} aria-hidden="true" /> Try Smart Triage
+                </button>
+              )}
+              <button type="button" className="btn btn--secondary" onClick={onReset}>
+                Clear filters
+              </button>
+            </div>
+          ) : ranked ? (
+            <div className="grid">{items.map(renderItem)}</div>
+          ) : (
+            groups.map(({ category, items: groupItems }) => (
+              <section key={category.id} className="dir-group" aria-labelledby={`group-${category.id}`}>
+                <h2 id={`group-${category.id}`} className="dir-group__title">
+                  {category.label}
+                  <span className="dir-group__count">{groupItems.length}</span>
+                </h2>
+                <p className="dir-group__description">{category.description}</p>
+                <div className="grid">{groupItems.map(renderItem)}</div>
+              </section>
+            ))
+          )}
+        </>
       )}
     </main>
   );

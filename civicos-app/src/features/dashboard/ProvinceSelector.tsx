@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, LoaderCircle, LocateFixed, MapPin } from "lucide-react";
 import { PROVINCES, PROVINCES_BY_CODE, provinceFromName } from "../../data/provinces";
+import { useLanguage } from "../../context/LanguageContext";
 import { useCivicData } from "../../state/civicDataStore";
 import type { ProvinceCode } from "../../types/dashboard";
 
@@ -26,6 +27,7 @@ async function detectProvince(): Promise<ProvinceCode> {
 
 export default function ProvinceSelector() {
   const { location, setLocation } = useCivicData();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +74,7 @@ export default function ProvinceSelector() {
       <button
         type="button"
         className="province__button"
+        title={t("filter.region")}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}

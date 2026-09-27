@@ -1,54 +1,60 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, ExternalLink, LoaderCircle, MapPin, Search } from "lucide-react";
 import { lookupWasteCollection, OTTAWA_COLLECTION_CALENDAR_URL } from "../../services/api/ottawaWasteApi";
-import { formatISODate, titleCase } from "../../lib/formatting";
+import { collectionDay } from "../../lib/formatting";
+import { useLanguage } from "../../context/LanguageContext";
 
-export const WasteScheduleResult = ({ schedule }) => (
-  <div className="waste-result" role="status">
-    <div className="waste-result__head">
-      <CalendarDays size={22} aria-hidden="true" />
-      <div>
-        <p className="waste-result__day">{titleCase(schedule.day)}</p>
-        <p className="waste-result__next">Next collection: {formatISODate(schedule.nextCollection)}</p>
+export const WasteScheduleResult = ({ schedule }) => {
+  const { currentLang, t, fmt } = useLanguage();
+  return (
+    <div className="waste-result" role="status">
+      <div className="waste-result__head">
+        <CalendarDays size={22} aria-hidden="true" />
+        <div>
+          <p className="waste-result__day">{collectionDay(schedule.day, currentLang)}</p>
+          <p className="waste-result__next">
+            {t("Next collection:", "Prochaine collecte :")} {fmt.longDate(schedule.nextCollection)}
+          </p>
+        </div>
       </div>
+      <p className="waste-result__address">
+        <MapPin size={13} aria-hidden="true" /> {schedule.address}
+      </p>
+      <dl className="waste-result__meta">
+        <div>
+          <dt>Schedule</dt>
+          <dd>{schedule.schedule}</dd>
+        </div>
+        <div>
+          <dt>Zone</dt>
+          <dd>{schedule.zone}</dd>
+        </div>
+        <div>
+          <dt>Collector</dt>
+          <dd>{schedule.contractor}</dd>
+        </div>
+      </dl>
+      <ul className="waste-result__rotation">
+        {schedule.rotation.map((item) => (
+          <li key={item.stream}>
+            <strong>{item.stream}</strong>
+            <span>{item.frequency}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="waste-result__footnote">
+        Holidays can shift collection. For exact blue/black bin weeks, see the{" "}
+        <a href={OTTAWA_COLLECTION_CALENDAR_URL} target="_blank" rel="noreferrer">
+          City collection calendar <ExternalLink size={11} aria-hidden="true" />
+        </a>
+        .
+      </p>
+      <p className="waste-result__attribution">
+        Data: City of Ottawa Open Data · Geocoding © OpenStreetMap contributors
+      </p>
     </div>
-    <p className="waste-result__address">
-      <MapPin size={13} aria-hidden="true" /> {schedule.address}
-    </p>
-    <dl className="waste-result__meta">
-      <div>
-        <dt>Schedule</dt>
-        <dd>{schedule.schedule}</dd>
-      </div>
-      <div>
-        <dt>Zone</dt>
-        <dd>{schedule.zone}</dd>
-      </div>
-      <div>
-        <dt>Collector</dt>
-        <dd>{schedule.contractor}</dd>
-      </div>
-    </dl>
-    <ul className="waste-result__rotation">
-      {schedule.rotation.map((item) => (
-        <li key={item.stream}>
-          <strong>{item.stream}</strong>
-          <span>{item.frequency}</span>
-        </li>
-      ))}
-    </ul>
-    <p className="waste-result__footnote">
-      Holidays can shift collection. For exact blue/black bin weeks, see the{" "}
-      <a href={OTTAWA_COLLECTION_CALENDAR_URL} target="_blank" rel="noreferrer">
-        City collection calendar <ExternalLink size={11} aria-hidden="true" />
-      </a>
-      .
-    </p>
-    <p className="waste-result__attribution">
-      Data: City of Ottawa Open Data · Geocoding © OpenStreetMap contributors
-    </p>
-  </div>
-);
+  );
+};
 
 /**
  * Address input + live lookup. The resolved schedule object is the field's value.

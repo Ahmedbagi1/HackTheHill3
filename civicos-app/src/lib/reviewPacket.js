@@ -1,8 +1,12 @@
 /**
  * Builds a self-contained, printable HTML "review packet" of a completed
- * application and triggers a download. All user input is HTML-escaped.
+ * application, in the active language, and triggers a download. All user
+ * input is HTML-escaped.
  */
 
+import { tierLabel } from "../data/servicesData";
+import { getFormatters } from "../i18n/format";
+import { LOCALES, tr } from "../i18n/i18n";
 import { formatAnswer } from "./formatting";
 import { DISPLAY_ONLY_TYPES, visibleFields } from "./validation";
 
@@ -27,7 +31,8 @@ const PACKET_STYLES = `
   @media print{body{margin:0}}
 `;
 
-export function buildReviewPacketHtml({ service, steps, formData, referenceId, submittedAt = new Date() }) {
+export function buildReviewPacketHtml({ service, steps, formData, referenceId, submittedAt = new Date(), lang = "en" }) {
+  const t = tr(lang);
   const sections = steps
     .filter((step) => step.fields.length)
     .map((step) => {
@@ -36,7 +41,7 @@ export function buildReviewPacketHtml({ service, steps, formData, referenceId, s
         .map(
           (field) =>
             `<tr><th>${escapeHtml(field.reviewLabel ?? field.label)}</th><td>${escapeHtml(
-              formatAnswer(field, formData[field.name], formData),
+              formatAnswer(field, formData[field.name], formData, lang),
             )}</td></tr>`,
         )
         .join("");
@@ -45,22 +50,27 @@ export function buildReviewPacketHtml({ service, steps, formData, referenceId, s
     .join("");
 
   const requirements = service.requirements.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  const stamp = submittedAt.toLocaleString("en-CA", { dateStyle: "long", timeStyle: "short" });
+  const stamp = getFormatters(lang).dateTime(submittedAt);
 
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(service.title)} — CivicOS review packet</title><style>${PACKET_STYLES}</style></head>
+<html lang="${LOCALES[lang]}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(service.title)} — ${escapeHtml(t("CivicOS review packet", "Récapitulatif CivicOS"))}</title><style>${PACKET_STYLES}</style></head>
 <body>
 <header>
-  <div class="meta">${escapeHtml(service.tier)} · ${escapeHtml(service.agency)}</div>
+  <div class="meta">${escapeHtml(tierLabel(service.tier, lang))} · ${escapeHtml(service.agency)}</div>
   <h1>${escapeHtml(service.title)}</h1>
-  <div class="meta">${referenceId ? "Submitted" : "Draft prepared"} ${escapeHtml(stamp)}</div>
+  <div class="meta">${escapeHtml(referenceId ? t(`Submitted ${stamp}`, `Soumise le ${stamp}`) : t(`Draft prepared ${stamp}`, `Brouillon préparé le ${stamp}`))}</div>
   ${referenceId ? `<div class="ref">${escapeHtml(referenceId)}</div>` : ""}
 </header>
 ${sections}
-<h2>Documents to have ready</h2><ul>${requirements}</ul>
-<div class="note">Prepared with CivicOS. This packet is a summary for your records and is not an official government document.
-Official information: ${escapeHtml(service.officialUrl)}</div>
+<h2>${escapeHtml(t("Documents to have ready", "Documents à préparer"))}</h2><ul>${requirements}</ul>
+<div class="note">${escapeHtml(
+    t(
+      "Prepared with CivicOS. This packet is a summary for your records and is not an official government document.",
+      "Préparé avec CivicOS. Ce récapitulatif est un résumé pour vos dossiers; il ne s'agit pas d'un document officiel du gouvernement.",
+    ),
+  )}
+${escapeHtml(t("Official information:", "Renseignements officiels :"))} ${escapeHtml(service.officialUrl)}</div>
 </body></html>`;
 }
 
@@ -70,7 +80,8 @@ export function downloadReviewPacket(packetInput) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `civicos-${packetInput.service.id}-${packetInput.referenceId ?? "draft"}.html`;
+  const draft = tr(packetInput.lang ?? "en")("draft", "brouillon");
+  link.download = `civicos-${packetInput.service.id}-${packetInput.referenceId ?? draft}.html`;
   document.body.appendChild(link);
   link.click();
   link.remove();

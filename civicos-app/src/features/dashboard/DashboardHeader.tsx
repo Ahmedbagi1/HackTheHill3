@@ -1,5 +1,7 @@
 import { Landmark } from "lucide-react";
 import AccountButton from "../../components/account/AccountButton";
+import { useLanguage } from "../../context/LanguageContext";
+import LanguageSelector from "./LanguageSelector";
 import ProvinceSelector from "./ProvinceSelector";
 import NotificationsMenu from "./NotificationsMenu";
 import type { DashboardNotification } from "../../types/dashboard";
@@ -13,6 +15,7 @@ interface Props {
 }
 
 export default function DashboardHeader({ notifications, readIds, onMarkRead, onSelectNotification, onHome }: Props) {
+  const { t } = useLanguage();
   return (
     <header className="topbar">
       <div className="topbar__inner">
@@ -20,7 +23,7 @@ export default function DashboardHeader({ notifications, readIds, onMarkRead, on
           <a
             className="brand"
             href="#/"
-            aria-label="CivicOS home"
+            aria-label={t("CivicOS home", "Accueil CivicOS")}
             onClick={(e) => {
               e.preventDefault();
               onHome();
@@ -33,13 +36,14 @@ export default function DashboardHeader({ notifications, readIds, onMarkRead, on
           </a>
           <ProvinceSelector />
         </div>
-        <nav className="topbar__actions" aria-label="Account">
+        <nav className="topbar__actions" aria-label={t("Account", "Compte")}>
           <NotificationsMenu
             notifications={notifications}
             readIds={readIds}
             onMarkRead={onMarkRead}
             onSelect={onSelectNotification}
           />
+          <LanguageSelector />
           <AccountButton />
         </nav>
       </div>

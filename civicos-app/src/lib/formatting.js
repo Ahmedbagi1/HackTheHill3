@@ -1,40 +1,44 @@
+import { capitalize, getFormatters } from "../i18n/format";
+import { tr } from "../i18n/i18n";
 import { isEmptyValue } from "./validation";
-
-export const currencyFormat = new Intl.NumberFormat("en-CA", {
-  style: "currency",
-  currency: "CAD",
-});
-
-const dateFormat = new Intl.DateTimeFormat("en-CA", { dateStyle: "long" });
-
-export const titleCase = (value) =>
-  value.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-
-/** Parses YYYY-MM-DD as a local date so the day doesn't shift across time zones. */
-export const formatISODate = (value) => {
-  const [year, month, day] = value.split("-").map(Number);
-  return dateFormat.format(new Date(year, month - 1, day));
-};
 
 const optionLabel = (field, value) =>
   field.options.find((option) => option.value === value)?.label ?? value;
 
-export const formatWasteSchedule = (schedule) =>
-  `${titleCase(schedule.day)} · Schedule ${schedule.schedule} · ${schedule.address}`;
+/** City of Ottawa collection zones as published in the open data layer. */
+const ZONES = { central: ["Central", "Centre"], east: ["East", "Est"], west: ["West", "Ouest"] };
+
+export const zoneLabel = (zone, lang) => {
+  const names = ZONES[String(zone ?? "").toLowerCase()];
+  return names ? tr(lang)(names[0], names[1]) : zone;
+};
+
+/** "MONDAY" → "Monday" / "Lundi", for labels that stand on their own. */
+export const collectionDay = (day, lang) => capitalize(getFormatters(lang).weekday(day));
+
+export const formatWasteSchedule = (schedule, lang) => {
+  const t = tr(lang);
+  return `${collectionDay(schedule.day, lang)} · ${t("Schedule", "Horaire")} ${schedule.schedule} · ${schedule.address}`;
+};
 
 export const formatGeotag = (location) =>
   `${location.label ? `${location.label} ` : ""}(${location.lat.toFixed(5)}, ${location.lon.toFixed(5)})`;
 
-/** Human-readable answer for the review step and the downloadable packet. */
-export const formatAnswer = (field, value, formData) => {
+/** Human-readable answer for the review step, the request summary and the downloadable packet. */
+export const formatAnswer = (field, value, formData, lang = "en") => {
+  const t = tr(lang);
+  const fmt = getFormatters(lang);
+
   if (field.type === "estimate") {
     const result = field.compute(formData);
-    return result ? [result.headline, result.subline].filter(Boolean).join(" — ") : "Not enough information";
+    return result
+      ? [result.headline, result.subline].filter(Boolean).join(" — ")
+      : t("Not enough information", "Renseignements insuffisants");
   }
 
   if (isEmptyValue(field, value)) {
-    if (field.type === "checkbox-group") return "None selected";
-    if (field.type === "checkbox") return "Not confirmed";
+    if (field.type === "checkbox-group") return t("None selected", "Aucune sélection");
+    if (field.type === "checkbox") return t("Not confirmed", "Non confirmé");
     return "—";
   }
 
@@ -45,16 +49,16 @@ export const formatAnswer = (field, value, formData) => {
     case "checkbox-group":
       return value.map((v) => optionLabel(field, v)).join(", ");
     case "checkbox":
-      return "Confirmed";
+      return t("Confirmed", "Confirmé");
     case "number": {
       const amount = Number(value);
-      if (field.prefix === "$") return currencyFormat.format(amount);
-      return `${amount.toLocaleString("en-CA")}${field.suffix ? ` ${field.suffix}` : ""}`;
+      if (field.currency) return fmt.currencyCents(amount);
+      return `${fmt.number(amount)}${field.suffix ? ` ${field.suffix}` : ""}`;
     }
     case "date":
-      return formatISODate(value);
+      return fmt.longDate(value);
     case "waste-lookup":
-      return formatWasteSchedule(value);
+      return formatWasteSchedule(value, lang);
     case "geotag":
       return formatGeotag(value);
     default:

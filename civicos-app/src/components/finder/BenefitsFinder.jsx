@@ -13,7 +13,8 @@ import {
 import FieldRenderer from "../wizard/FieldRenderer";
 import StepIndicator from "../wizard/StepIndicator";
 import BenefitsBreakdownBar from "./BenefitsBreakdownBar";
-import { FINDER_STEPS, INITIAL_FINDER_ANSWERS, prefillFor, runBenefitsFinder } from "../../lib/benefitsFinder";
+import { getFinderSteps, INITIAL_FINDER_ANSWERS, prefillFor, runBenefitsFinder } from "../../lib/benefitsFinder";
+import { useLanguage } from "../../context/LanguageContext";
 import { validateFields, visibleFields } from "../../lib/validation";
 import { useCountUp } from "../../hooks/useCountUp";
 import { useDialogBehavior } from "../../hooks/useDialogBehavior";
@@ -125,6 +126,8 @@ const Results = ({ results, onApply, onEdit }) => {
  * with a single total. "Apply" opens the matching wizard prefilled.
  */
 const BenefitsFinder = ({ onClose, onApply }) => {
+  const { currentLang } = useLanguage();
+  const FINDER_STEPS = getFinderSteps(currentLang);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState(INITIAL_FINDER_ANSWERS);
   const [errors, setErrors] = useState({});
@@ -135,7 +138,7 @@ const BenefitsFinder = ({ onClose, onApply }) => {
 
   const lastStep = FINDER_STEPS.length - 1;
   const currentStep = FINDER_STEPS[step];
-  const results = useMemo(() => (showResults ? runBenefitsFinder(answers) : null), [showResults, answers]);
+  const results = useMemo(() => (showResults ? runBenefitsFinder(answers, currentLang) : null), [showResults, answers, currentLang]);
 
   useEffect(() => {
     if (!showResults) bodyRef.current?.querySelector(".fields input, .fields select")?.focus();
