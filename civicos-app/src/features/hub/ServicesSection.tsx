@@ -4,7 +4,7 @@ import ServiceCard from "../../components/dashboard/ServiceCard";
 import LifeEventChecklist from "../../components/dashboard/LifeEventChecklist";
 import { CATEGORIES, type ModuleEntry } from "../../data/categories";
 import { INTENTS_BY_ID } from "../../data/intents";
-import { PROVINCES, PROVINCES_BY_CODE } from "../../data/provinces";
+import { PROVINCES_BY_CODE } from "../../data/provinces";
 import { SERVICES_BY_ID } from "../../data/servicesData";
 import { useI18n } from "../../i18n/i18nContext";
 import type { CatalogService, DirectoryItem, DirectoryResult } from "../../lib/directory";
@@ -75,16 +75,6 @@ export default function ServicesSection({ filters, directory, locationProvince, 
             </button>
           );
         })}
-        <label className="tier-tabs__province">
-          <span className="sr-only">{t("Province or territory")}</span>
-          <select value={directory.province} onChange={(e) => onChange({ province: e.target.value as ProvinceCode, tier: "provincial" })}>
-            {PROVINCES.map((p) => (
-              <option key={p.code} value={p.code}>
-                {t(p.name)}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
       <QuickIntents active={filters.intent} counts={directory.intentCounts} onSelect={(intent) => onChange({ intent })} />

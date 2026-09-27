@@ -36,6 +36,15 @@ const NewApplicationDialog = lazy(() => import("./features/shell/NewApplicationD
 
 /** Anchors that live on the Disruptions & Alerts page. */
 const ALERT_PAGE_ANCHORS = new Set(["waste", "disruptions", "canada-alerts", "updates"]);
+const SIDEBAR_COLLAPSED_KEY = "civicos:sidebar-collapsed";
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function PageFallback() {
   return (
@@ -53,6 +62,7 @@ function AppShell() {
 
   const [filters, setFilters] = useState<DirectoryFilters>(DEFAULT_FILTERS);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
   const [newAppOpen, setNewAppOpen] = useState(false);
   const [finderOpen, setFinderOpen] = useState(false);
   const [wizard, setWizard] = useState<{ service: CatalogService; prefill: Record<string, unknown> | null } | null>(null);
@@ -150,10 +160,18 @@ function AppShell() {
     }
   };
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? "1" : "0");
+    } catch {
+      // Storage unavailable: the choice lasts for this visit.
+    }
+  }, [sidebarCollapsed]);
+
   const goHome = () => go("dashboard");
 
   return (
-    <div className="shell">
+    <div className={`shell${sidebarCollapsed ? " is-collapsed" : ""}`}>
       <a className="skip-link" href="#main">
         {t("Skip to main content")}
       </a>
@@ -166,6 +184,8 @@ function AppShell() {
         alertCount={provinceAlerts.length}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
         onSelectTier={selectTier}
         onSelectProvince={(code: ProvinceCode) => {
           updateFilters({ province: code, tier: "provincial" });

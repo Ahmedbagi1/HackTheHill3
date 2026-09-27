@@ -12,6 +12,8 @@ const ui: Record<string, string> = {
   "Citizen Hub": "Carrefour citoyen",
   "Close menu": "Fermer le menu",
   "Open menu": "Ouvrir le menu",
+  "Collapse sidebar": "Réduire le menu latéral",
+  "Expand sidebar": "Agrandir le menu latéral",
   Services: "Services",
   Updates: "Mises à jour",
   Programs: "Programmes",

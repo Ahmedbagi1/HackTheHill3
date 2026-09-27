@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { auth0Configured } from "../lib/auth0";
+import { displayNameFor } from "../lib/displayName";
 import { SERVICE_CATEGORY } from "../data/categories";
 import { DEFAULT_PROVINCE } from "../data/provinces";
 import type { LocationPreference, RequestAction } from "../types/dashboard";
@@ -314,7 +315,7 @@ export function CivicDataProvider({ children }: { children: ReactNode }) {
   const value: CivicDataContextValue = {
     userKey,
     signedIn,
-    displayName: signedIn ? (user?.given_name ?? user?.name ?? user?.nickname ?? null) : null,
+    displayName: signedIn ? displayNameFor(user) : null,
     emailVerified: Boolean(signedIn && user?.email_verified),
     data,
     requests,
