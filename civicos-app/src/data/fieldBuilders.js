@@ -155,11 +155,19 @@ export const money = (name, label, opts = {}) => ({
   label,
   type: "number",
   prefix: "$",
+  currency: true,
   min: 0,
   step: 0.01,
   inputMode: "decimal",
   ...opts,
 });
+
+/**
+ * Builders whose output may vary by language. Money inputs are identical in
+ * every language today (answers are formatted via `currency`), so the kit is
+ * shared; callers pass `lang` so locale-specific variants can slot in later.
+ */
+export const getFieldKit = () => ({ money });
 
 export const date = (name, label, opts = {}) => ({
   name,

@@ -1,0 +1,129 @@
+import { CircleAlert, RotateCcw, Sparkles, X } from "lucide-react";
+import ServiceCard from "../../components/dashboard/ServiceCard";
+import { useLanguage } from "../../context/LanguageContext";
+import { SERVICES_BY_ID } from "../../data/servicesData";
+import { LOCALES } from "../../i18n/i18n";
+import type { CatalogService } from "../../lib/directory";
+import type { TriageState } from "./useCivicTriage";
+
+interface Props {
+  state: Exclude<TriageState, { status: "idle" }>;
+  onClear: () => void;
+  onRetry: (query: string) => void;
+  onStartService: (service: CatalogService) => void;
+  onListen: (service: CatalogService) => void;
+  onExplain: (service: CatalogService) => void;
+}
+
+/** "AI Civic Recommendation": Gemini's guidance, action plan and recommended services for a described situation. */
+export default function TriagePanel({ state, onClear, onRetry, onStartService, onListen, onExplain }: Props) {
+  const { t } = useLanguage();
+
+  if (state.status === "loading") {
+    return (
+      <section className="triage triage--loading" aria-live="polite" aria-busy="true">
+        <p className="triage__loading">
+          <Sparkles size={16} aria-hidden="true" className="triage__spark" />
+          {t("Analyzing civic pathways…", "Analyse des parcours civiques…")}
+        </p>
+        <div className="triage__shimmer" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={onClear}>
+          {t("Cancel", "Annuler")}
+        </button>
+      </section>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <div className="triage-notice" role="status">
+        <CircleAlert size={16} aria-hidden="true" />
+        <p>
+          {state.disabled
+            ? t(
+                "Live AI triage isn't available here, so you're seeing standard keyword results instead.",
+                "Le triage par IA n'est pas offert ici; voici plutôt les résultats de la recherche par mots-clés.",
+              )
+            : t(
+                `Live AI triage is unavailable right now (${state.message}). Showing standard keyword results instead.`,
+                `Le triage par IA est indisponible pour le moment (${state.message}). Voici les résultats de la recherche par mots-clés.`,
+              )}
+        </p>
+        {!state.disabled && (
+          <button type="button" className="btn btn--ghost btn--sm" onClick={() => onRetry(state.query)}>
+            <RotateCcw size={14} aria-hidden="true" /> {t("Try again", "Réessayer")}
+          </button>
+        )}
+        <button type="button" className="icon-btn icon-btn--sm" aria-label={t("Dismiss", "Fermer")} onClick={onClear}>
+          <X size={15} />
+        </button>
+      </div>
+    );
+  }
+
+  const { result, lang } = state;
+  const services = result.recommendedServiceIds.map((id) => SERVICES_BY_ID[id]).filter(Boolean) as CatalogService[];
+  const urgencyLabel = {
+    Immediate: t("Immediate", "Immédiat"),
+    High: t("High priority", "Priorité élevée"),
+    Standard: t("Standard", "Standard"),
+  }[result.urgency];
+
+  return (
+    <section className="triage" aria-labelledby="triage-title">
+      <div className="triage__head">
+        <p id="triage-title" className="triage__eyebrow">
+          <Sparkles size={14} aria-hidden="true" /> {t("AI Civic Recommendation", "Recommandation civique par IA")}
+        </p>
+        <span className={`triage__urgency triage__urgency--${result.urgency.toLowerCase()}`}>{urgencyLabel}</span>
+        <button type="button" className="btn btn--ghost btn--sm triage__clear" onClick={onClear}>
+          <X size={14} aria-hidden="true" /> {t("Clear Triage", "Effacer le triage")}
+        </button>
+      </div>
+
+      {/* Model output is tagged with its language so screen readers and syllabics fonts apply. */}
+      <p className="triage__guidance" lang={LOCALES[lang]}>
+        {result.guidance}
+      </p>
+
+      {result.actionPlan.length > 0 && (
+        <ol className="triage__steps" aria-label={t("Action plan", "Plan d'action")} lang={LOCALES[lang]}>
+          {result.actionPlan.map((step, index) => (
+            <li key={`${index}-${step.title}`} className={`triage__step${step.serviceId ? " triage__step--service" : ""}`}>
+              <span className="triage__step-num" aria-hidden="true">
+                {index + 1}
+              </span>
+              {step.title}
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {services.length > 0 && (
+        <div className="grid triage__grid">
+          {services.map((service, index) => (
+            <ServiceCard
+              key={service.id}
+              service={service}
+              recommendedStep={index + 1}
+              onStart={onStartService}
+              onListen={onListen}
+              onExplain={onExplain}
+            />
+          ))}
+        </div>
+      )}
+
+      <p className="triage__disclaimer">
+        {t(
+          `AI-generated by Gemini from your description. Always confirm details on the official site.`,
+          `Généré par l'IA Gemini à partir de votre description. Confirmez toujours les détails sur le site officiel.`,
+        )}
+      </p>
+    </section>
+  );
+}
