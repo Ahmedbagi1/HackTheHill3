@@ -1,11 +1,12 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { readServiceDefinitions, definitionSql } from './service-definitions.mjs';
+import { DEFINITION_MIGRATIONS, latestDefinitionSql, readServiceDefinitions } from './service-definitions.mjs';
 
 export async function buildApplicationApiSql() {
   const definitions = await readServiceDefinitions();
-  const catalog = await readFile(new URL('../supabase/migrations/202609260002_service_definitions.sql', import.meta.url), 'utf8');
-  if (catalog !== definitionSql(definitions)) {
+  const [catalog, ...revisions] = await Promise.all(DEFINITION_MIGRATIONS.map((name) =>
+    readFile(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8')));
+  if ((revisions.at(-1) ?? catalog) !== latestDefinitionSql(definitions)) {
     throw new Error('The service forms differ from the reviewed SQL schema. Prepare a new migration; do not overwrite an applied migration.');
   }
   const api = await readFile(new URL('../supabase/migrations/202609260003_application_api.sql', import.meta.url), 'utf8');
@@ -29,6 +30,7 @@ $preflight$;
 
 ${catalog}
 ${api}
+${revisions.join('\n')}
 
 commit;
 notify pgrst, 'reload schema';

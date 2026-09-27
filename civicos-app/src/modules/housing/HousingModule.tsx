@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { CircleCheck, CircleX, ExternalLink, FileCheck2, House, Phone, RotateCcw, ShieldAlert, TriangleAlert } from "lucide-react";
-import { checks, money, number, radio, select } from "../../data/fieldBuilders";
+import { checks, dateOfBirth, declaration, money, number, radio, select, textarea } from "../../data/fieldBuilders";
+import { contactFields, homeAndMailing, legalName } from "../../data/intake";
 import { useCivicData } from "../../state/civicDataStore";
 import { useI18n } from "../../i18n/i18nContext";
 import Tx from "../../i18n/Tx";
@@ -27,10 +28,33 @@ const STEPS: IntakeStep[] = [
         ["ottawa", "City of Ottawa"],
         ["other", "Elsewhere in Ontario"],
       ]),
-      number("applicantAge", "Your age", { max: 120 }),
       radio("hasSpouse", "Do you have a spouse or partner who would live with you?", yesNo),
       number("children", "Children in the household", { max: 12 }),
       number("otherAdults", "Other adults (not your spouse)", { max: 12 }),
+      textarea("householdMembers", "Everyone else who would live with you", {
+        rows: 3,
+        hint: "For each person: full legal name, date of birth, relationship to you and status in Canada.",
+        showIf: (data: Record<string, unknown>) => data.hasSpouse === "yes" || Number(data.children) > 0 || Number(data.otherAdults) > 0,
+      }),
+    ],
+  },
+  {
+    id: "applicant",
+    label: "Applicant",
+    title: "Applicant and contact details",
+    description: "Your legal name, date of birth and current address, as the Registry application asks.",
+    fields: [
+      ...legalName(),
+      dateOfBirth(),
+      ...homeAndMailing(),
+      ...contactFields(),
+      select("residencyProof", "Proof of your current address", [
+        ["lease", "Lease or rent receipt"],
+        ["utility", "Utility bill"],
+        ["government", "Government letter (e.g. CRA, Service Canada)"],
+        ["bank", "Bank statement"],
+        ["shelter", "Letter from a shelter or agency"],
+      ], { full: true }),
     ],
   },
   {
@@ -39,7 +63,15 @@ const STEPS: IntakeStep[] = [
     title: "Income, assets and status",
     description: "Use your household's combined figures from your latest tax returns.",
     fields: [
-      money("annualIncome", "Combined household income (before tax)", { full: true, hint: "From each member's Notice of Assessment." }),
+      money("incomeEmployment", "Employment and self-employment income", {
+        optional: true,
+        hint: "Yearly amounts before tax for everyone in the household, from each Notice of Assessment. Don't include the Canada Child Benefit.",
+      }),
+      money("incomeEI", "Employment Insurance", { optional: true }),
+      money("incomeAssistance", "Ontario Works or ODSP", { optional: true }),
+      money("incomePension", "CPP, OAS and other pensions", { optional: true }),
+      money("incomeSupport", "Child or spousal support received", { optional: true }),
+      money("incomeOther", "Other income", { optional: true }),
       money("assets", "Household assets", {
         full: true,
         hint: "Cash, bank accounts, investments and property. Don't include a vehicle, RRSPs, RESPs or RDSPs.",
@@ -80,17 +112,45 @@ const STEPS: IntakeStep[] = [
       ),
       radio("livesIndependently", "Can you live independently, arranging any support you need?", yesNo),
       radio("accessibilityNeeds", "Does anyone need an accessible unit?", yesNo),
+      declaration("declConsent", "I consent to the Registry and housing providers verifying my household's income, assets and status with other agencies, such as the Canada Revenue Agency.", {
+        reviewLabel: "Consent",
+      }),
+      declaration("declTrue", "I declare that the information I have given is true, correct and complete to the best of my knowledge.", {
+        reviewLabel: "Declaration of truth",
+      }),
     ],
   },
 ];
 
 const INITIAL: Record<string, unknown> = {
   serviceArea: "",
-  applicantAge: "",
   hasSpouse: "",
   children: "0",
   otherAdults: "0",
-  annualIncome: "",
+  householdMembers: "",
+  legalSurname: "",
+  legalGivenNames: "",
+  dateOfBirth: "",
+  homeStreet: "",
+  homeUnit: "",
+  homeCity: "",
+  homeProvince: "ON",
+  homePostalCode: "",
+  mailingSame: "",
+  mailingStreet: "",
+  mailingUnit: "",
+  mailingCity: "",
+  mailingProvince: "",
+  mailingPostalCode: "",
+  email: "",
+  phone: "",
+  residencyProof: "",
+  incomeEmployment: "",
+  incomeEI: "",
+  incomeAssistance: "",
+  incomePension: "",
+  incomeSupport: "",
+  incomeOther: "",
   assets: "",
   currentMonthlyRent: "",
   statusInCanada: "",
@@ -99,18 +159,53 @@ const INITIAL: Record<string, unknown> = {
   priorityFlags: [],
   livesIndependently: "",
   accessibilityNeeds: "",
+  declConsent: false,
+  declTrue: false,
 };
+
+/** Whole years between an ISO birth date and today. */
+function ageFrom(isoDate: string, today = new Date()) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  if (!y) return 0;
+  const hadBirthday = today.getMonth() + 1 > m || (today.getMonth() + 1 === m && today.getDate() >= d);
+  return today.getFullYear() - y - (hadBirthday ? 0 : 1);
+}
+
+const formatAddress = (v: Record<string, unknown>, role: "home" | "mailing") =>
+  [v[`${role}Unit`] && `${v[`${role}Unit`]}-${v[`${role}Street`]}`, !v[`${role}Unit`] && v[`${role}Street`], v[`${role}City`], v[`${role}Province`], v[`${role}PostalCode`]]
+    .filter(Boolean)
+    .join(", ");
 
 function toIntake(v: Record<string, unknown>): HousingIntake {
   const flags = (v.priorityFlags as string[]) ?? [];
   const num = (key: string) => Number(v[key]) || 0;
+  const incomeSources = {
+    employment: num("incomeEmployment"),
+    employmentInsurance: num("incomeEI"),
+    socialAssistance: num("incomeAssistance"),
+    pensions: num("incomePension"),
+    supportPayments: num("incomeSupport"),
+    other: num("incomeOther"),
+  };
   return {
     serviceArea: v.serviceArea === "ottawa" ? "ottawa" : "other",
-    applicantAge: num("applicantAge"),
+    applicantAge: ageFrom(String(v.dateOfBirth ?? "")),
     hasSpouse: v.hasSpouse === "yes",
     children: num("children"),
     otherAdults: num("otherAdults"),
-    annualIncome: num("annualIncome"),
+    annualIncome: Object.values(incomeSources).reduce((sum, amount) => sum + amount, 0),
+    incomeSources,
+    applicant: {
+      legalSurname: String(v.legalSurname ?? "").trim(),
+      legalGivenNames: String(v.legalGivenNames ?? "").trim(),
+      dateOfBirth: String(v.dateOfBirth ?? ""),
+      email: String(v.email ?? "").trim(),
+      phone: String(v.phone ?? "").trim(),
+      homeAddress: formatAddress(v, "home"),
+      mailingAddress: v.mailingSame === "no" ? formatAddress(v, "mailing") : null,
+      residencyProof: String(v.residencyProof ?? ""),
+      householdMembers: String(v.householdMembers ?? "").trim(),
+    },
     assets: num("assets"),
     currentMonthlyRent: v.currentMonthlyRent === "" ? null : num("currentMonthlyRent"),
     statusInCanada: v.statusInCanada as HousingIntake["statusInCanada"],

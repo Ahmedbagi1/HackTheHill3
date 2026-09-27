@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { after, before, describe, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
-import { definitionSql, readServiceDefinitions } from '../../scripts/service-definitions.mjs';
+import { LATEST_DEFINITION_MIGRATION, latestDefinitionSql, readServiceDefinitions } from '../../scripts/service-definitions.mjs';
 import { buildApplicationApiSql } from '../../scripts/prepare-application-api.mjs';
 
 // Synthetic test fixtures run only in in-memory PostgreSQL. They are never
@@ -29,7 +29,14 @@ const patternedValues = {
   vin: 'TESTTESTTEST12345', healthNumber: '1234 567 890', email: 'demo@example.test',
   phone: '6135550123', emergencyPhone: '6135550123', waterAccount: '123456',
   ticketNumber: 'TEST123', microchipNumber: '123456789', prestoNumber: '12345678901234567',
+  oen: '123456789', institutionNumber: '001', transitNumber: '12345', accountNumber: '1234567',
 };
+// Shared intake blocks repeat these patterns under role prefixes (homePostalCode, landlordPhone…).
+const patternedSuffixes = [
+  [/PostalCode$/, 'K1P 1J1'], [/Phone$/, '6135550123'], [/Email$/, 'demo@example.test'],
+  [/PassportNumber$/, 'AB123456'], [/LicenceNumber$/, 'A1234-12345-12345'],
+];
+const patternedValue = (name) => patternedValues[name] ?? patternedSuffixes.find(([suffix]) => suffix.test(name))?.[1];
 let db;
 let definitions;
 let verification;
@@ -39,7 +46,7 @@ function payloadFor(serviceId, overrides = {}) {
   const answers = Object.fromEntries(definition.fields.map((f) => {
     let value;
     if (f.pattern) {
-      value = patternedValues[f.name];
+      value = patternedValue(f.name);
       assert.ok(value && new RegExp(f.pattern, f.insensitive ? 'i' : '').test(value), f.name);
     } else if (f.rule === 'sin') value = '123 456 782';
     else if (f.rule === 'roll-number') value = '0614 000 000 00000 0000';
@@ -112,7 +119,7 @@ describe('application submission and lifecycle API', () => {
 
   test('SQL definitions match all 29 existing forms without changing their choices or conditions', async () => {
     assert.equal(definitions.length, 29);
-    assert.equal(await readFile(new URL('../migrations/202609260002_service_definitions.sql', import.meta.url), 'utf8'), definitionSql(definitions));
+    assert.equal(await readFile(new URL(`../migrations/${LATEST_DEFINITION_MIGRATION}`, import.meta.url), 'utf8'), latestDefinitionSql(definitions));
     for (const { id, ...definition } of definitions) {
       const result = await db.query('select civicos_private.service_definition($1) as definition', [id]);
       assert.deepEqual(result.rows[0].definition, definition);
@@ -171,7 +178,7 @@ describe('application submission and lifecycle API', () => {
     const repeated = await submit('passport', payloadFor('passport'), key);
     assert.equal(repeated.id, original.id);
     assert.equal((await history(original)).length, 1);
-    await assert.rejects(submit('passport', payloadFor('passport', { fullName: 'Changed test name' }), key), { code: '23505' });
+    await assert.rejects(submit('passport', payloadFor('passport', { legalSurname: 'Changed test surname' }), key), { code: '23505' });
     await assert.rejects(submit('osap', payloadFor('osap'), key), { code: '23505' });
     const otherOwner = await submit('passport', payloadFor('passport'), key, claimsFor(userB));
     assert.notEqual(otherOwner.id, original.id);
@@ -185,7 +192,7 @@ describe('application submission and lifecycle API', () => {
       { ...payloadFor('passport'), owner_subject: userB },
       { ...payloadFor('passport'), status: 'completed' },
       payloadFor('passport', { unexpected: true }),
-      payloadFor('passport', { fullName: 'x'.repeat(66000) }),
+      payloadFor('passport', { legalSurname: 'x'.repeat(66000) }),
     ]) await assert.rejects(submit('passport', payload), { code: '22023' });
     for (const id of [null, 'unknown', 'housing', 'doctor', 'autism']) {
       await assert.rejects(submit(id, payloadFor('passport')), { code: '22023' });
@@ -196,7 +203,7 @@ describe('application submission and lifecycle API', () => {
 
   test('required, choice, type, length, date, number and custom rules fail before any insert', async () => {
     const cases = [
-      ['passport', { fullName: '' }], ['passport', { fullName: {} }], ['passport', { fullName: 'x'.repeat(501) }],
+      ['passport', { legalSurname: '' }], ['passport', { legalSurname: {} }], ['passport', { legalSurname: 'x'.repeat(501) }],
       ['passport', { requestType: 'not-a-choice' }], ['passport', { dateOfBirth: '2025-02-30' }],
       ['passport', { dateOfBirth: '2999-01-01' }], ['passport', { passportNumber: 'bad' }],
       ['canada-child-benefit', { childrenUnder6: '0', children6to17: '0' }],
@@ -231,7 +238,7 @@ describe('application submission and lifecycle API', () => {
     const saved = await submit('passport', payloadFor('passport', { requestType: ' renewal ' }));
     assert.equal(saved.payload.answers.requestType, 'renewal');
     assert.equal(saved.payload.answers.passportNumber, 'AB123456');
-    assert.ok(!Object.hasOwn(saved.payload.answers, 'guarantorName'));
+    assert.ok(!Object.hasOwn(saved.payload.answers, 'guarantorSurname'));
   });
 
   test('submission and event insertion are atomic when history fails', async () => {

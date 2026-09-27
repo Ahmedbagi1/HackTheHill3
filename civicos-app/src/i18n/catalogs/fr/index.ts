@@ -3,6 +3,7 @@ import autism from "./autism";
 import data from "./data";
 import doctor from "./doctor";
 import housing from "./housing";
+import intake from "./intake";
 import life from "./life";
 import places from "./places";
 import servicesFederal from "./servicesFederal";
@@ -24,6 +25,7 @@ const fr: Catalog = {
   ...housing,
   ...doctor,
   ...autism,
+  ...intake,
   ...ui,
 };
 
