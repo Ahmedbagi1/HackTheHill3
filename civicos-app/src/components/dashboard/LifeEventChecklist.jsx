@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ArrowRight, ListChecks, Volume2 } from "lucide-react";
 import { TIERS } from "../../data/servicesData";
+import { useI18n } from "../../i18n/i18nContext";
+import Tx from "../../i18n/Tx";
 
 /**
  * Cross-tier checklist for a matched life event. Steps are grouped by level
@@ -8,6 +10,7 @@ import { TIERS } from "../../data/servicesData";
  * Remount with key={lifeEvent.id} to reset progress for a new event.
  */
 const LifeEventChecklist = ({ lifeEvent, servicesById, onStart, onListen }) => {
+  const { t } = useI18n();
   const [done, setDone] = useState(() => new Set());
 
   const steps = lifeEvent.steps
@@ -31,17 +34,12 @@ const LifeEventChecklist = ({ lifeEvent, servicesById, onStart, onListen }) => {
           <ListChecks size={20} />
         </span>
         <div className="journey__heading">
-          <p className="journey__eyebrow">Your cross-government checklist</p>
-          <h2 id="journey-title" className="journey__title">
-            {lifeEvent.title}
-          </h2>
-          <p className="journey__intro">{lifeEvent.intro}</p>
+          <p className="journey__eyebrow">{t("Your cross-government checklist")}</p>
+          <Tx as="h2" id="journey-title" className="journey__title" text={lifeEvent.title} />
+          <Tx as="p" className="journey__intro" text={lifeEvent.intro} />
         </div>
         <div className="journey__progress" aria-live="polite">
-          <strong>
-            {completed}/{steps.length}
-          </strong>{" "}
-          done
+          {t("{done} of {total} done", { done: completed, total: steps.length })}
           <span className="journey__bar">
             <span style={{ width: `${(completed / steps.length) * 100}%` }} />
           </span>
@@ -54,11 +52,11 @@ const LifeEventChecklist = ({ lifeEvent, servicesById, onStart, onListen }) => {
           return (
             <div key={tier} className={`journey__column journey__column--${tier.toLowerCase()}`}>
               <h3 className="journey__tier">
-                {tier}
+                {t(tier)}
                 <span>{tierSteps.length}</span>
               </h3>
               {tierSteps.length === 0 ? (
-                <p className="journey__none">Nothing needed at this level.</p>
+                <p className="journey__none">{t("Nothing needed at this level.")}</p>
               ) : (
                 <ol className="journey__steps">
                   {tierSteps.map((step) => {
@@ -68,16 +66,16 @@ const LifeEventChecklist = ({ lifeEvent, servicesById, onStart, onListen }) => {
                         <label className="journey-step__check">
                           <input type="checkbox" checked={isDone} onChange={() => toggle(step.number)} />
                           <span className="journey-step__number">{step.number}</span>
-                          <span className="journey-step__action">{step.action}</span>
+                          <Tx className="journey-step__action" text={step.action} />
                         </label>
                         <div className="journey-step__links">
                           <button type="button" className="link-btn" onClick={() => onStart(step.service)}>
-                            {step.service.title} <ArrowRight size={12} aria-hidden="true" />
+                            {t(step.service.title)} <ArrowRight size={12} aria-hidden="true" />
                           </button>
                           <button
                             type="button"
                             className="link-btn link-btn--muted"
-                            aria-label={`Explain ${step.service.title}`}
+                            aria-label={t("Audio summary of {service}, voiced by ElevenLabs", { service: t(step.service.title) })}
                             onClick={() => onListen(step.service)}
                           >
                             <Volume2 size={13} aria-hidden="true" />

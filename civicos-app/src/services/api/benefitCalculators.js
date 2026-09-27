@@ -95,7 +95,7 @@ export function calculateCCB({ afni, childrenUnder6, children6to17 }) {
     headline: `${money.format(annual)} / year`,
     subline: annual > 0 ? `≈ ${moneyCents.format(annual / 12)} per month` : "No payment at this income",
     breakdown: [
-      { label: `Maximum for ${children} child${children > 1 ? "ren" : ""}`, value: money.format(maximum) },
+      { label: children === 1 ? "Maximum for 1 child" : `Maximum for ${children} children`, value: money.format(maximum) },
       { label: "Income-based reduction", value: `− ${money.format(reduction)}` },
       { label: "Estimated annual benefit", value: money.format(annual) },
     ],
@@ -141,14 +141,15 @@ export function calculateGstHstCredit({ hasSpouse, afni, children }) {
   if (hasSpouse) {
     total += p.spouseOrDependant + kids * p.perChild;
     breakdown.push({ label: "Spouse or common-law partner", value: money.format(p.spouseOrDependant) });
-    if (kids) breakdown.push({ label: `${kids} child${kids > 1 ? "ren" : ""} under 19`, value: money.format(kids * p.perChild) });
+    if (kids) breakdown.push({ label: kids === 1 ? "1 child under 19" : `${kids} children under 19`, value: money.format(kids * p.perChild) });
   } else if (kids > 0) {
     // Single parents claim the eligible-dependant amount for one child and
     // receive the full single supplement.
     total += p.spouseOrDependant + p.singleSupplementMax + (kids - 1) * p.perChild;
     breakdown.push({ label: "Eligible dependant (first child)", value: money.format(p.spouseOrDependant) });
     breakdown.push({ label: "Single supplement (single parent)", value: money.format(p.singleSupplementMax) });
-    if (kids > 1) breakdown.push({ label: `${kids - 1} additional child${kids > 2 ? "ren" : ""}`, value: money.format((kids - 1) * p.perChild) });
+    if (kids > 1)
+      breakdown.push({ label: kids === 2 ? "1 additional child" : `${kids - 1} additional children`, value: money.format((kids - 1) * p.perChild) });
   } else {
     const supplement = Math.min(
       p.singleSupplementMax,
@@ -341,7 +342,10 @@ const screenAssets = (limits, programName, { householdType, dependants, assets }
     subline: `${money.format(total)} of ${money.format(limit)} allowed`,
     breakdown: [
       { label: householdType === "couple" ? "Couple limit" : "Single limit", value: money.format(householdType === "couple" ? limits.couple : limits.single) },
-      { label: `${deps} dependant${deps === 1 ? "" : "s"} × ${money.format(limits.perDependant)}`, value: money.format(deps * limits.perDependant) },
+      {
+        label: deps === 1 ? `1 dependant × ${money.format(limits.perDependant)}` : `${deps} dependants × ${money.format(limits.perDependant)}`,
+        value: money.format(deps * limits.perDependant),
+      },
       { label: "Your non-exempt assets", value: money.format(total) },
     ],
     notes: [
@@ -370,7 +374,7 @@ export function estimateOasResidence({ yearsInCanadaAfter18 }) {
       status: "ineligible",
       headline: "Not yet eligible for OAS",
       subline: "OAS requires at least 10 years in Canada after age 18",
-      breakdown: [{ label: "Years counted", value: `${counted} of 40` }],
+      breakdown: [{ label: "Years counted", value: `${counted} of 40 years` }],
       notes: ["Social security agreements with other countries may help you qualify."],
     };
   }
@@ -379,7 +383,7 @@ export function estimateOasResidence({ yearsInCanadaAfter18 }) {
     status: counted === 40 ? "eligible" : "partial",
     headline: counted === 40 ? "Full OAS pension" : `Partial OAS: ${counted}/40ths`,
     subline: `${Math.round((counted / 40) * 100)}% of the full OAS pension`,
-    breakdown: [{ label: "Years counted", value: `${counted} of 40` }],
+    breakdown: [{ label: "Years counted", value: `${counted} of 40 years` }],
     notes: ["CPP is based on your contributions; get your statement in My Service Canada Account."],
     source: {
       label: "Canada.ca: OAS eligibility",

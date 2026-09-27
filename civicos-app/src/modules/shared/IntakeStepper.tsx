@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import FieldRenderer from "../../components/wizard/FieldRenderer";
 import StepIndicator from "../../components/wizard/StepIndicator";
 import { validateFields, visibleFields } from "../../lib/validation";
+import { useI18n } from "../../i18n/i18nContext";
+import Tx from "../../i18n/Tx";
 
 /** Field schema produced by data/fieldBuilders.js. */
 export type FieldSchema = { name: string; type: string; label: string } & Record<string, unknown>;
@@ -32,6 +34,7 @@ interface Props {
  * so modules get the same inputs, errors and accessibility as the wizard.
  */
 export default function IntakeStepper({ steps, values, onChange, onComplete, submitLabel }: Props) {
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLFormElement>(null);
@@ -75,10 +78,9 @@ export default function IntakeStepper({ steps, values, onChange, onComplete, sub
           setStep(index);
         }}
       />
-      <h2 className="form-section-title">
-        Step {step + 1} of {steps.length}: {current.title}
-      </h2>
-      <p className="form-section-text">{current.description}</p>
+      <p className="form-section-progress">{t("Step {current} of {total}", { current: step + 1, total: steps.length })}</p>
+      <h2 className="form-section-title">{t(current.title)}</h2>
+      <Tx as="p" className="form-section-text" text={current.description} />
       <div className="fields fields--two">
         {visibleFields(current.fields, values).map((field: FieldSchema) => (
           <FieldRenderer
@@ -96,20 +98,20 @@ export default function IntakeStepper({ steps, values, onChange, onComplete, sub
         <p className="field__error" role="alert">
           {Object.entries(errors)
             .filter(([k]) => !current.fields.some((f) => f.name === k))
-            .map(([, v]) => v)
+            .map(([, v]) => t(v))
             .join(" ")}
         </p>
       )}
       <div className="intake__footer">
         {step > 0 ? (
           <button type="button" className="btn btn--secondary" onClick={() => setStep(step - 1)}>
-            <ChevronLeft size={16} aria-hidden="true" /> Back
+            <ChevronLeft size={16} aria-hidden="true" /> {t("Back")}
           </button>
         ) : (
           <span />
         )}
         <button type="submit" className="btn btn--primary">
-          {last ? submitLabel : "Next"} <ChevronRight size={16} aria-hidden="true" />
+          {last ? t(submitLabel) : t("Next")} <ChevronRight size={16} aria-hidden="true" />
         </button>
       </div>
     </form>

@@ -4,11 +4,11 @@ import type { WasteState } from "../../state/wasteSchedule";
 import { daysUntil } from "../../state/wasteSchedule";
 
 const STREAM_NAMES: Record<string, string> = {
-  green: "green bin",
-  garbage: "garbage",
-  blue: "blue bin",
-  black: "black bin",
-  yard: "leaf & yard waste",
+  green: "Green bin",
+  garbage: "Garbage",
+  blue: "Blue bin",
+  black: "Black bin",
+  yard: "Leaf & yard",
 };
 
 /**
@@ -26,7 +26,8 @@ export function useDashboardSignals(requests: UserRequest[], waste: WasteState, 
           id: `action:${request.id}:${request.actionRequired.label}:${request.actionRequired.detail}`,
           tone: "moderate",
           title: request.actionRequired.label,
-          detail: `${request.title}: ${request.actionRequired.detail}`,
+          context: request.title,
+          detail: request.actionRequired.detail,
           actionLabel: "Open",
           target: { type: "request", id: request.id },
         });
@@ -41,7 +42,8 @@ export function useDashboardSignals(requests: UserRequest[], waste: WasteState, 
           id: `waste:${next.date}`,
           tone: "info",
           title: days === 0 ? "Collection day is today" : "Tomorrow is collection day",
-          detail: next.streams.map((s) => STREAM_NAMES[s]).join(", "),
+          detail: "",
+          detailParts: next.streams.map((s) => STREAM_NAMES[s]),
           target: { type: "anchor", id: "waste" },
         });
       }
@@ -54,6 +56,7 @@ export function useDashboardSignals(requests: UserRequest[], waste: WasteState, 
         tone: "critical",
         title: item.title,
         detail: item.detail.slice(0, 120),
+        sourceText: item.kind !== "power",
         target: { type: "anchor", id: "disruptions" },
       });
     }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Megaphone, X } from "lucide-react";
+import { useI18n } from "../../i18n/i18nContext";
 
 const STORAGE_KEY = "civicos:dismissed-banner";
 
@@ -11,8 +12,12 @@ const readDismissed = () => {
   }
 };
 
-/** Dismissible site-wide notice. Dismissal is remembered per browser. */
+/**
+ * Dismissible site-wide notice. Dismissal is remembered per browser.
+ * `notice.sourceText` keeps third-party text in its source language.
+ */
 const NotificationBanner = ({ notice, actionLabel, onAction }) => {
+  const { t, locale } = useI18n();
   const [dismissedId, setDismissedId] = useState(readDismissed);
 
   if (!notice || dismissedId === notice.id) return null;
@@ -26,19 +31,21 @@ const NotificationBanner = ({ notice, actionLabel, onAction }) => {
     }
   };
 
+  const text = (value) => (notice.sourceText ? value : t(value));
+
   return (
-    <div className={`banner banner--${notice.tone}`} role="region" aria-label="Announcement">
+    <div className={`banner banner--${notice.tone}`} role="region" aria-label={t("Announcement")}>
       <div className="banner__inner">
         <Megaphone size={18} className="banner__icon" aria-hidden="true" />
-        <p className="banner__text">
-          <strong>{notice.title}</strong> {notice.text}
+        <p className="banner__text" lang={notice.sourceText && locale !== "en" ? "en" : undefined}>
+          <strong>{text(notice.title)}</strong> {text(notice.text)}
         </p>
         {onAction && (
           <button type="button" className="banner__action" onClick={onAction}>
             {actionLabel}
           </button>
         )}
-        <button type="button" className="banner__close" aria-label="Dismiss announcement" onClick={dismiss}>
+        <button type="button" className="banner__close" aria-label={t("Dismiss announcement")} onClick={dismiss}>
           <X size={16} />
         </button>
       </div>

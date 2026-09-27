@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, ExternalLink, LoaderCircle, MapPin, Search } from "lucide-react";
 import { lookupWasteCollection, OTTAWA_COLLECTION_CALENDAR_URL } from "../../services/api/ottawaWasteApi";
-import { collectionDay } from "../../lib/formatting";
-import { useLanguage } from "../../context/LanguageContext";
+import { formatISODate, titleCase } from "../../lib/formatting";
+import { useI18n } from "../../i18n/i18nContext";
+import { useAnswerLanguage } from "../../i18n/useAnswerLanguage";
 
 export const WasteScheduleResult = ({ schedule }) => {
-  const { currentLang, t, fmt } = useLanguage();
+  const { t } = useI18n();
+  const lang = useAnswerLanguage();
   return (
     <div className="waste-result" role="status">
       <div className="waste-result__head">
         <CalendarDays size={22} aria-hidden="true" />
         <div>
-          <p className="waste-result__day">{collectionDay(schedule.day, currentLang)}</p>
+          <p className="waste-result__day">{t(titleCase(schedule.day))}</p>
           <p className="waste-result__next">
-            {t("Next collection:", "Prochaine collecte :")} {fmt.longDate(schedule.nextCollection)}
+            {t("Next collection: {date}", { date: formatISODate(schedule.nextCollection, lang) })}
           </p>
         </div>
       </div>
@@ -22,36 +24,33 @@ export const WasteScheduleResult = ({ schedule }) => {
       </p>
       <dl className="waste-result__meta">
         <div>
-          <dt>Schedule</dt>
-          <dd>{schedule.schedule}</dd>
+          <dt>{t("Schedule")}</dt>
+          <dd>{t(schedule.schedule)}</dd>
         </div>
         <div>
-          <dt>Zone</dt>
+          <dt>{t("Zone")}</dt>
           <dd>{schedule.zone}</dd>
         </div>
         <div>
-          <dt>Collector</dt>
+          <dt>{t("Collector")}</dt>
           <dd>{schedule.contractor}</dd>
         </div>
       </dl>
       <ul className="waste-result__rotation">
         {schedule.rotation.map((item) => (
           <li key={item.stream}>
-            <strong>{item.stream}</strong>
-            <span>{item.frequency}</span>
+            <strong>{t(item.stream)}</strong>
+            <span>{t(item.frequency)}</span>
           </li>
         ))}
       </ul>
       <p className="waste-result__footnote">
-        Holidays can shift collection. For exact blue/black bin weeks, see the{" "}
+        {t("Holidays can shift collection. For exact blue/black bin weeks, see the City collection calendar.")}{" "}
         <a href={OTTAWA_COLLECTION_CALENDAR_URL} target="_blank" rel="noreferrer">
-          City collection calendar <ExternalLink size={11} aria-hidden="true" />
+          {t("Open the City collection calendar")} <ExternalLink size={11} aria-hidden="true" />
         </a>
-        .
       </p>
-      <p className="waste-result__attribution">
-        Data: City of Ottawa Open Data · Geocoding © OpenStreetMap contributors
-      </p>
+      <p className="waste-result__attribution">{t("Data: City of Ottawa Open Data · Geocoding © OpenStreetMap contributors")}</p>
     </div>
   );
 };
@@ -61,6 +60,7 @@ export const WasteScheduleResult = ({ schedule }) => {
  * Rendered inside the wizard <form>, so Enter triggers the lookup instead of submitting.
  */
 const WasteLookupField = ({ id, value, onChange, describedBy, invalid }) => {
+  const { t } = useI18n();
   const [address, setAddress] = useState(value?.address ?? "");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
@@ -97,7 +97,7 @@ const WasteLookupField = ({ id, value, onChange, describedBy, invalid }) => {
             id={id}
             type="text"
             className="field__input field__input--has-prefix"
-            placeholder="e.g. 110 Laurier Ave W"
+            placeholder={t("e.g. 110 Laurier Ave W")}
             autoComplete="street-address"
             value={address}
             aria-invalid={invalid}
@@ -111,23 +111,18 @@ const WasteLookupField = ({ id, value, onChange, describedBy, invalid }) => {
             }}
           />
         </div>
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={lookup}
-          disabled={!address.trim() || status === "loading"}
-        >
+        <button type="button" className="btn btn--primary" onClick={lookup} disabled={!address.trim() || status === "loading"}>
           {status === "loading" ? (
             <LoaderCircle size={16} className="spin" aria-hidden="true" />
           ) : (
             <Search size={16} aria-hidden="true" />
           )}
-          {status === "loading" ? "Looking up…" : "Find my day"}
+          {status === "loading" ? t("Looking up…") : t("Find my day")}
         </button>
       </div>
       {error && (
         <p className="waste-lookup__error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
       {value && <WasteScheduleResult schedule={value} />}

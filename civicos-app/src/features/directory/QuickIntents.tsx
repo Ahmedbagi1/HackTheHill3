@@ -1,5 +1,6 @@
 import { BusFront, HeartPulse, IdCard, LayoutGrid, Receipt, Recycle } from "lucide-react";
 import { QUICK_INTENTS } from "../../data/intents";
+import { useI18n } from "../../i18n/i18nContext";
 import type { IntentId } from "../../types/directory";
 
 const ICONS: Record<IntentId, typeof LayoutGrid> = {
@@ -19,8 +20,9 @@ interface Props {
 }
 
 export default function QuickIntents({ active, counts, onSelect }: Props) {
+  const { t } = useI18n();
   return (
-    <div className="intents" role="group" aria-label="Quick filters">
+    <div className="intents" role="group" aria-label={t("Quick filters")}>
       {QUICK_INTENTS.map(({ id, label }) => {
         const Icon = ICONS[id];
         const pressed = active === id;
@@ -34,7 +36,7 @@ export default function QuickIntents({ active, counts, onSelect }: Props) {
             disabled={counts[id] === 0 && !pressed}
           >
             <Icon size={16} aria-hidden="true" />
-            {label}
+            {t(label)}
             <span className="intent__count">{counts[id]}</span>
           </button>
         );

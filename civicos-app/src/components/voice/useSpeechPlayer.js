@@ -77,7 +77,7 @@ export function useSpeechPlayer({ text, cacheKey, lang = "en-CA" }) {
 
   const speakWithBrowser = () => {
     if (!browserSpeechAvailable()) {
-      setError("Audio playback isn't supported in this browser.");
+      setError("Audio isn't available in this browser. Read the summary below.");
       setStatus("error");
       return;
     }

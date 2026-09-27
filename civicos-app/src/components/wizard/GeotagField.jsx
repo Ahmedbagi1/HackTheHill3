@@ -2,6 +2,7 @@ import { useState } from "react";
 import { LoaderCircle, LocateFixed, MapPinned, X } from "lucide-react";
 import { reverseGeocode } from "../../services/api/geocoding";
 import { formatGeotag } from "../../lib/formatting";
+import { useI18n } from "../../i18n/i18nContext";
 
 const GEOLOCATION_ERRORS = {
   1: "Location permission was denied. Enter the address below instead.",
@@ -20,6 +21,7 @@ const getPosition = () =>
 
 /** Captures device coordinates (plus a reverse-geocoded label) as the field value. */
 const GeotagField = ({ id, value, onChange, describedBy }) => {
+  const { t } = useI18n();
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const supported = typeof navigator !== "undefined" && "geolocation" in navigator;
@@ -47,7 +49,7 @@ const GeotagField = ({ id, value, onChange, describedBy }) => {
   };
 
   if (!supported) {
-    return <p className="field__hint">Location isn't available in this browser; describe the location below.</p>;
+    return <p className="field__hint">{t("Location isn't available in this browser; describe the location below.")}</p>;
   }
 
   return (
@@ -56,7 +58,7 @@ const GeotagField = ({ id, value, onChange, describedBy }) => {
         <div className="geotag__result">
           <MapPinned size={18} aria-hidden="true" />
           <div>
-            <p className="geotag__label">{value.label ?? "Location pinned"}</p>
+            <p className="geotag__label">{value.label ?? t("Location pinned")}</p>
             <p className="geotag__coords">
               {formatGeotag({ ...value, label: null })} · ±{value.accuracy} m ·{" "}
               <a
@@ -64,11 +66,11 @@ const GeotagField = ({ id, value, onChange, describedBy }) => {
                 target="_blank"
                 rel="noreferrer"
               >
-                View map
+                {t("View map")}
               </a>
             </p>
           </div>
-          <button type="button" className="icon-btn" aria-label="Remove location" onClick={() => onChange(null)}>
+          <button type="button" className="icon-btn" aria-label={t("Remove location")} onClick={() => onChange(null)}>
             <X size={16} />
           </button>
         </div>
@@ -79,12 +81,12 @@ const GeotagField = ({ id, value, onChange, describedBy }) => {
           ) : (
             <LocateFixed size={16} aria-hidden="true" />
           )}
-          {status === "loading" ? "Locating…" : "Use my current location"}
+          {status === "loading" ? t("Locating…") : t("Use my current location")}
         </button>
       )}
       {error && (
         <p className="field__error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
     </div>

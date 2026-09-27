@@ -50,7 +50,7 @@ function exclusionReason(clinic: Clinic, intake: PatientIntake, distanceKm: numb
   if (clinic.acceptingStatus === "closed") return "Not accepting or waitlisting new patients";
   if (distanceKm > intake.maxDistanceKm) return `${distanceKm.toFixed(1)} km away (limit ${intake.maxDistanceKm} km)`;
   if (intake.languageRequired && !clinic.languages.some((l) => intake.languages.includes(l))) {
-    return `No provider speaks ${intake.languages.join(" or ")}`;
+    return `No provider speaks ${intake.languages.join(", ")}`;
   }
   if (intake.wheelchairAccessRequired && !clinic.wheelchairAccessible) return "Not wheelchair accessible";
   if (!providerMatches(clinic, intake.providerPreference)) {
@@ -79,7 +79,7 @@ function scoreClinic(
     language = spoken.includes(intake.languages[0]) ? 20 : 14;
     reasons.push(`Care available in ${spoken.join(", ")}`);
   } else {
-    gaps.push(`No provider speaks ${intake.languages.join(" or ")}`);
+    gaps.push(`No provider speaks ${intake.languages.join(", ")}`);
   }
 
   // Care-needs coverage (25)

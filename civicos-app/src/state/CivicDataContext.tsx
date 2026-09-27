@@ -190,7 +190,10 @@ export function CivicDataProvider({ children }: { children: ReactNode }) {
             stageDays: { waiting: record.match.estimatedWaitWeeks * 7 },
             summary: [
               { label: "Clinic", value: `${record.match.clinic.name} (${record.match.clinic.neighbourhood})` },
-              { label: "Estimated wait", value: `about ${record.match.estimatedWaitWeeks} week${record.match.estimatedWaitWeeks === 1 ? "" : "s"}` },
+              {
+                label: "Estimated wait",
+                value: record.match.estimatedWaitWeeks === 1 ? "about 1 week" : `about ${record.match.estimatedWaitWeeks} weeks`,
+              },
               { label: "Priority", value: record.priority === "high" ? "Higher need" : "Standard" },
             ],
           },

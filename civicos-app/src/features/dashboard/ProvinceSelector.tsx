@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, LoaderCircle, LocateFixed, MapPin } from "lucide-react";
 import { PROVINCES, PROVINCES_BY_CODE, provinceFromName } from "../../data/provinces";
-import { useLanguage } from "../../context/LanguageContext";
+import { useI18n } from "../../i18n/i18nContext";
 import { useCivicData } from "../../state/civicDataStore";
 import type { ProvinceCode } from "../../types/dashboard";
 
@@ -26,8 +26,8 @@ async function detectProvince(): Promise<ProvinceCode> {
 }
 
 export default function ProvinceSelector() {
+  const { t } = useI18n();
   const { location, setLocation } = useCivicData();
-  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export default function ProvinceSelector() {
       setOpen(false);
     } catch (err) {
       const geoError = err as GeolocationPositionError & Error;
-      setError(geoError.code === 1 ? "Location permission was denied." : geoError.message || "Detection failed.");
+      setError(t(geoError.code === 1 ? "Location permission was denied." : geoError.message || "Detection failed."));
     } finally {
       setDetecting(false);
     }
@@ -74,14 +74,14 @@ export default function ProvinceSelector() {
       <button
         type="button"
         className="province__button"
-        title={t("filter.region")}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={t("Your location: {province}", { province: t(province.name) })}
         onClick={() => setOpen((o) => !o)}
       >
         <MapPin size={14} aria-hidden="true" />
-        <span className="province__name">{province.name}</span>
-        {location.source === "detected" && <span className="province__source">Detected</span>}
+        <span className="province__name">{t(province.name)}</span>
+        {location.source === "detected" && <span className="province__source">{t("Detected")}</span>}
         <ChevronDown size={14} aria-hidden="true" />
       </button>
 
@@ -89,10 +89,10 @@ export default function ProvinceSelector() {
         <div className="popover province__menu">
           <button type="button" className="province__detect" onClick={detect} disabled={detecting}>
             {detecting ? <LoaderCircle size={15} className="spin" aria-hidden="true" /> : <LocateFixed size={15} aria-hidden="true" />}
-            {detecting ? "Detecting…" : "Detect my province"}
+            {detecting ? t("Detecting…") : t("Detect my province")}
           </button>
           {error && <p className="province__error" role="alert">{error}</p>}
-          <ul role="listbox" aria-label="Province or territory" className="province__list">
+          <ul role="listbox" aria-label={t("Province or territory")} className="province__list">
             {PROVINCES.map((p) => (
               <li key={p.code}>
                 <button
@@ -102,8 +102,8 @@ export default function ProvinceSelector() {
                   className="province__option"
                   onClick={() => choose(p.code)}
                 >
-                  <span>{p.name}</span>
-                  {!p.fullCoverage && <span className="province__coverage">Federal only</span>}
+                  <span>{t(p.name)}</span>
+                  {!p.fullCoverage && <span className="province__coverage">{t("Federal only")}</span>}
                   {p.code === location.province && <Check size={14} aria-hidden="true" />}
                 </button>
               </li>

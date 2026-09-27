@@ -61,6 +61,59 @@ const ENTRIES: Array<{ item: DirectoryItem; searchable: Searchable }> = [
 
 const ENTRY_BY_ID = new Map(ENTRIES.map((e) => [e.searchable.id, e]));
 
+/** Translates display text; supplied by the i18n layer so search also matches the active language. */
+export interface SearchLanguage {
+  locale: string;
+  t: (text: string) => string;
+}
+
+interface SearchCorpus {
+  searchables: Map<string, Searchable>;
+  lifeEvents: LifeEvent[];
+}
+
+const corpusCache = new Map<string, SearchCorpus>();
+
+/**
+ * Search entries with translated text added to their keywords, so a French
+ * query ("passeport perdu") ranks the same services as its English source.
+ * Built once per locale; search.js caches token indexes by object identity.
+ */
+function corpusFor(language?: SearchLanguage): SearchCorpus {
+  const key = language && language.locale !== "en" ? language.locale : "en";
+  const cached = corpusCache.get(key);
+  if (cached) return cached;
+
+  let corpus: SearchCorpus;
+  if (!language || key === "en") {
+    corpus = { searchables: new Map(ENTRIES.map((e) => [e.searchable.id, e.searchable])), lifeEvents: LIFE_EVENTS };
+  } else {
+    const { t } = language;
+    const translated = (values: Array<string | undefined>) => values.filter((v): v is string => Boolean(v)).map(t);
+    corpus = {
+      searchables: new Map(
+        ENTRIES.map(({ searchable }) => {
+          const source = searchable as Searchable & { subServices?: string[] };
+          return [
+            searchable.id,
+            {
+              ...source,
+              keywords: [...searchable.keywords, ...translated([searchable.title, searchable.summary, ...(source.subServices ?? []), ...searchable.keywords])],
+            },
+          ];
+        }),
+      ),
+      lifeEvents: LIFE_EVENTS.map((event) => ({
+        ...event,
+        triggers: [...event.triggers, ...translated(event.triggers)],
+        keywords: [...event.keywords, ...translated(event.keywords)],
+      })),
+    };
+  }
+  corpusCache.set(key, corpus);
+  return corpus;
+}
+
 /** Whether an item is offered for the chosen province. Ottawa services only apply in Ontario. */
 function inScope(item: DirectoryItem, province: ProvinceCode): boolean {
   if (item.kind === "portal") return item.portal.province === province;
@@ -91,7 +144,7 @@ export interface DirectoryResult {
   ranked: boolean;
 }
 
-export function buildDirectory(filters: DirectoryFilters, locationProvince: ProvinceCode): DirectoryResult {
+export function buildDirectory(filters: DirectoryFilters, locationProvince: ProvinceCode, language?: SearchLanguage): DirectoryResult {
   const province = filters.province ?? locationProvince;
 
   // Municipal services are the City of Ottawa's, so that tab ignores the province filter.
@@ -107,10 +160,11 @@ export function buildDirectory(filters: DirectoryFilters, locationProvince: Prov
 
   const inTier = scoped.filter(({ item }) => matchesTier(item, filters.tier) && (filters.tier !== "all" || inAll(item)));
 
+  const corpus = corpusFor(language);
   const search = searchCatalog(
     filters.query,
-    inTier.map((e) => e.searchable),
-    LIFE_EVENTS,
+    inTier.map((e) => corpus.searchables.get(e.searchable.id) ?? e.searchable),
+    corpus.lifeEvents,
   ) as { lifeEvent: LifeEvent | null; results: Searchable[]; stepByServiceId: Map<string, number> };
 
   const matched = search.results.flatMap((s) => {

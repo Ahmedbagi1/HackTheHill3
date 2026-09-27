@@ -1,24 +1,27 @@
 import { ListChecks, Pencil } from "lucide-react";
 import { formatAnswer } from "../../lib/formatting";
 import { visibleFields } from "../../lib/validation";
-import { useLanguage } from "../../context/LanguageContext";
+import { useI18n } from "../../i18n/i18nContext";
+import { useAnswerLanguage } from "../../i18n/useAnswerLanguage";
+import Tx from "../../i18n/Tx";
 
 const ReviewGroup = ({ step, formData, onEdit }) => {
-  const { currentLang, t } = useLanguage();
+  const { t } = useI18n();
+  const lang = useAnswerLanguage();
   const rows = visibleFields(step.fields, formData).filter((field) => field.type !== "info");
   return (
     <div className="review-group">
       <div className="review-group__header">
-        {step.title}
+        {t(step.title)}
         <button type="button" className="link-btn" onClick={onEdit}>
-          <Pencil size={12} aria-hidden="true" /> {t("Edit", "Modifier")}
+          <Pencil size={12} aria-hidden="true" /> {t("Edit")}
         </button>
       </div>
       <dl className="review-list">
         {rows.map((field) => (
           <div key={field.name}>
-            <dt>{field.reviewLabel ?? field.label}</dt>
-            <dd>{formatAnswer(field, formData[field.name], formData, currentLang)}</dd>
+            <Tx as="dt" text={field.reviewLabel ?? field.label} />
+            <dd>{formatAnswer(field, formData[field.name], formData, lang)}</dd>
           </div>
         ))}
       </dl>
@@ -28,7 +31,7 @@ const ReviewGroup = ({ step, formData, onEdit }) => {
 
 /** Step 3: every answer grouped by step, plus the documents checklist. */
 const ReviewSummary = ({ steps, formData, requirements, onEdit }) => {
-  const { t } = useLanguage();
+  const { t } = useI18n();
   return (
     <>
       {steps.map((step, index) => (
@@ -38,12 +41,12 @@ const ReviewSummary = ({ steps, formData, requirements, onEdit }) => {
         <div className="review-group">
           <div className="review-group__header">
             <span className="review-group__title">
-              <ListChecks size={14} aria-hidden="true" /> {t("Documents to have ready", "Documents à préparer")}
+              <ListChecks size={14} aria-hidden="true" /> {t("Documents to have ready")}
             </span>
           </div>
           <ul className="requirements-list">
             {requirements.map((item) => (
-              <li key={item}>{item}</li>
+              <Tx key={item} as="li" text={item} />
             ))}
           </ul>
         </div>
